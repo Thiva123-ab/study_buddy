@@ -10,7 +10,6 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -40,7 +39,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    console.error(error);
   }, [error]);
 
   return (
@@ -79,18 +78,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Smart Sinhala Study is an intelligent, AI-powered learning platform designed specifically for Sri Lankan students." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Smart Sinhala Study is an intelligent, AI-powered learning platform designed specifically for Sri Lankan students." },
+      { title: "LectureLens" },
+      { name: "description", content: "Turn lecture slides and notes into summaries, flashcards, and quizzes — in English and Sinhala." },
+      { name: "author", content: "LectureLens" },
+      { property: "og:title", content: "LectureLens — Bilingual AI study assistant" },
+      { property: "og:description", content: "Turn lecture slides and notes into summaries, flashcards, and quizzes — in English and Sinhala." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Lovable App" },
-      { name: "twitter:description", content: "Smart Sinhala Study is an intelligent, AI-powered learning platform designed specifically for Sri Lankan students." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/aPCg9snibTSNFi4Zo3GktAU58Wf2/social-images/social-1781586036367-33ee1d1f-3fea-4df8-9726-20676eb4bab1.webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/aPCg9snibTSNFi4Zo3GktAU58Wf2/social-images/social-1781586036367-33ee1d1f-3fea-4df8-9726-20676eb4bab1.webp" },
+      { name: "twitter:title", content: "LectureLens — Bilingual AI study assistant" },
+      { name: "twitter:description", content: "Turn lecture slides and notes into summaries, flashcards, and quizzes — in English and Sinhala." },
     ],
     links: [
       {

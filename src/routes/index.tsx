@@ -328,7 +328,7 @@ function Landing() {
       <footer className="relative z-10 flex w-full flex-col items-center gap-2 px-6 py-12 md:px-16">
         <div className="mb-8 h-px w-full bg-border" />
         <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          Built for students • Powered by Lovable AI
+          Built for students • LectureLens
         </p>
       </footer>
     </div>
