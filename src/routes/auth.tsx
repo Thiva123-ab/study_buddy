@@ -55,12 +55,21 @@ function AuthPage() {
 
   async function handleGoogle() {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.origin + "/dashboard" },
-    });
-    if (error) { toast.error(error.message ?? "Google sign-in failed"); setLoading(false); }
-    // On success Supabase redirects the browser — no further action needed
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { 
+          redirectTo: window.location.origin + "/dashboard",
+          queryParams: {
+            prompt: 'select_account'
+          }
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      toast.error(err.message ?? "Google sign-in failed");
+      setLoading(false);
+    }
   }
 
   return (
