@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-const MODEL = "gemini-1.5-flash";
+const MODEL = "gemini-1.5-pro-latest";
 const MAX_TEXT = 60000;
 
 function truncate(text: string) {
@@ -10,14 +10,80 @@ function truncate(text: string) {
 }
 
 async function generateAiText(options: any): Promise<string> {
-  const { generateText } = await import("ai");
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Missing GEMINI_API_KEY environment variable");
+
+  // Build the request for Google Gemini REST API directly
+  const model = MODEL;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  // Convert AI SDK format to Gemini format
+  const contents: any[] = [];
+  
+  if (options.system) {
+    // system instruction handled separately
+  }
+  
+  if (options.prompt) {
+    contents.push({ role: "user", parts: [{ text: options.prompt }] });
+  } else if (options.messages) {
+    for (const msg of options.messages) {
+      const parts: any[] = [];
+      if (typeof msg.content === "string") {
+        parts.push({ text: msg.content });
+      } else if (Array.isArray(msg.content)) {
+        for (const part of msg.content) {
+          if (part.type === "text") {
+            parts.push({ text: part.text });
+          } else if (part.type === "image") {
+            // base64 data URL
+            const match = part.image?.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              parts.push({ inline_data: { mime_type: match[1], data: match[2] } });
+            }
+          }
+        }
+      }
+      contents.push({ role: msg.role === "assistant" ? "model" : "user", parts });
+    }
+  }
+
+  const body: any = { contents };
+  
+  if (options.system) {
+    body.system_instruction = { parts: [{ text: options.system }] };
+  }
+
+  body.generationConfig = {
+    temperature: 0.7,
+    maxOutputTokens: 8192,
+  };
+
   try {
-    const result = await generateText(options);
-    return result.text;
-  } catch (error) {
-    const maybeText = error && typeof error === "object" && "text" in error ? (error as { text?: unknown }).text : undefined;
-    if (typeof maybeText === "string" && maybeText.trim()) return maybeText;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Gemini API error:", response.status, errText);
+      throw new Error(`Gemini API error (${response.status}): ${errText}`);
+    }
+
+    const data = await response.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
+      console.error("Gemini returned no text:", JSON.stringify(data).slice(0, 500));
+      throw new Error("Gemini returned an empty response.");
+    }
+    return text;
+  } catch (error: any) {
     console.error("AI generation failed", error);
+    if (error instanceof Error && error.message.includes("Gemini API error")) {
+      throw error; // Throw the real error to the frontend so we can see why it failed
+    }
     throw new Error("AI generation failed. Please try again with shorter or clearer study material.");
   }
 }
@@ -54,22 +120,43 @@ async function extractFromFile(file: File): Promise<string> {
     return result.value;
   }
 
-  // PDF, images, PPTX -> use Gemini multimodal extraction
-  const { getGateway } = await import("./ai-gateway.server");
-  const gateway = getGateway();
+  // PDF -> extract text locally with pdfjs-dist
+  if (name.endsWith(".pdf")) {
+    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const loadingTask = pdfjsLib.getDocument({ data: buf });
+    const pdfDoc = await loadingTask.promise;
+    const pages: string[] = [];
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+      const page = await pdfDoc.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items
+        .map((item: any) => item.str)
+        .join(" ");
+      pages.push(pageText);
+    }
+    const fullText = pages.join("\n\n");
+    if (fullText.trim().length > 10) {
+      return fullText;
+    }
+    throw new Error("Could not extract text from PDF. The PDF may be image-based or empty.");
+  }
 
+  // Images -> convert to base64 and ask AI to describe/extract text
   let mediaType = file.type || "application/octet-stream";
-  if (name.endsWith(".pdf")) mediaType = "application/pdf";
-  else if (name.endsWith(".png")) mediaType = "image/png";
+  if (name.endsWith(".png")) mediaType = "image/png";
   else if (name.endsWith(".jpg") || name.endsWith(".jpeg")) mediaType = "image/jpeg";
   else if (name.endsWith(".webp")) mediaType = "image/webp";
 
   const isImage = mediaType.startsWith("image/");
-  const isPdf = mediaType === "application/pdf";
-
-  if (!isImage && !isPdf) {
+  if (!isImage) {
     throw new Error("Unsupported file type. Please upload PDF, DOCX, or an image.");
   }
+
+  // For images, use AI with base64 encoding
+  const { getGateway } = await import("./ai-gateway.server");
+  const gateway = getGateway();
+  const base64 = Buffer.from(buf).toString("base64");
+  const dataUrl = `data:${mediaType};base64,${base64}`;
 
   const text = await generateAiText({
     model: gateway(MODEL),
@@ -79,9 +166,9 @@ async function extractFromFile(file: File): Promise<string> {
         content: [
           {
             type: "text",
-            text: "Extract ALL readable text from this document/image. Preserve structure (headings, bullets, lists). Return only the extracted text — no commentary.",
+            text: "Extract ALL readable text from this image. Preserve structure (headings, bullets, lists). Return only the extracted text — no commentary.",
           },
-          { type: "file", data: buf, mediaType },
+          { type: "image", image: dataUrl },
         ],
       },
     ],
