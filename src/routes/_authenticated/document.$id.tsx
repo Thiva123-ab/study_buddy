@@ -22,6 +22,66 @@ export const Route = createFileRoute("/_authenticated/document/$id")({
 
 type Lang = "en" | "si";
 
+async function downloadPDF(elementId: string, filename: string) {
+  toast.loading("Generating PDF...", { id: "pdf-toast" });
+  try {
+    const jspdfModule = await import("jspdf");
+    const jsPDF = jspdfModule.jsPDF || jspdfModule.default;
+    
+    const { toJpeg } = await import("html-to-image");
+    
+    const element = document.getElementById(elementId);
+    if (!element) throw new Error(`Element #${elementId} not found`);
+    
+    const hiddenElements = element.querySelectorAll('.print\\:hidden');
+    hiddenElements.forEach((el) => { (el as HTMLElement).style.display = 'none'; });
+
+    // Force light mode for clear PDF colors
+    const htmlEl = document.documentElement;
+    const isDark = htmlEl.classList.contains('dark');
+    if (isDark) htmlEl.classList.remove('dark');
+
+    // Small delay to ensure styles are applied
+    await new Promise(r => setTimeout(r, 50));
+
+    const imgData = await toJpeg(element, { 
+      backgroundColor: "#ffffff",
+      quality: 0.8,
+      pixelRatio: 2, // Retina resolution is plenty and keeps file size low
+    });
+    
+    // Restore dark mode and UI elements
+    if (isDark) htmlEl.classList.add('dark');
+    hiddenElements.forEach((el) => { (el as HTMLElement).style.display = ''; });
+
+    const pdf = new jsPDF("p", "mm", "a4");
+    
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgHeight = (element.offsetHeight * pdfWidth) / element.offsetWidth;
+    
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    // Add multi-page support
+    pdf.addImage(imgData, "JPEG", 0, position, pdfWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position -= pageHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "JPEG", 0, position, pdfWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+    
+    pdf.save(filename);
+    toast.success("Downloaded PDF", { id: "pdf-toast" });
+  } catch (error: any) {
+    console.error("PDF generation error:", error);
+    toast.error(`Failed: ${error?.message || String(error)}`, { id: "pdf-toast", duration: 8000 });
+  }
+}
+
 function DocumentPage() {
   const { id } = useParams({ from: "/_authenticated/document/$id" });
   const [doc, setDoc] = useState<{ title: string } | null>(null);
@@ -165,7 +225,7 @@ function SummaryView({ documentId, lang }: { documentId: string; lang: Lang }) {
   }
 
   async function exportPDF() {
-    window.print();
+    await downloadPDF("summary-content-export", `summary-${documentId.slice(0, 8)}.pdf`);
   }
 
   return (
@@ -672,14 +732,14 @@ function PaperRunner({ paperId, onExit }: { paperId: string; onExit: () => void 
   }
 
   return (
-    <div className="space-y-4">
+    <div id="paper-content-export" className="space-y-4">
       <div className="sticky top-2 z-10 flex items-center justify-between rounded-2xl border border-border bg-card/90 px-4 py-3 backdrop-blur">
         <div>
           <p className="font-semibold">{paper.title}</p>
           <p className="text-xs text-muted-foreground">{questions.length} questions</p>
         </div>
         <div className="flex items-center gap-3 print:hidden">
-          <Button size="sm" variant="outline" onClick={() => window.print()} title="Download as PDF">
+          <Button size="sm" variant="outline" onClick={() => downloadPDF("paper-content-export", `paper-${paperId.slice(0, 8)}.pdf`)} title="Download as PDF">
             <Download className="mr-1.5 h-3.5 w-3.5" /> PDF
           </Button>
           <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold tabular-nums ${
