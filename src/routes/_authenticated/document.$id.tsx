@@ -5,6 +5,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { generateSummary, generateFlashcards, generateQuiz, translateToSinhala, recordQuizAttempt, chatWithDocument, getChatHistory, generatePaper, listPapers, getPaper, deletePaper } from "@/lib/study.functions";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Loader2, Languages, ArrowLeft, RotateCcw, Check, X, Download, Timer, Play, Pause, Send, MessageSquare, FileText, Trash2, Plus, AlarmClock } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -38,14 +44,14 @@ function DocumentPage() {
 
   return (
     <main className="container mx-auto max-w-4xl px-6 py-8">
-      <Link to="/dashboard" className="mb-4 inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+      <Link to="/dashboard" className="mb-4 inline-flex items-center text-sm text-muted-foreground hover:text-foreground print:hidden">
         <ArrowLeft className="mr-1 h-4 w-4" /> All sets
       </Link>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className={`font-display text-3xl font-semibold md:text-4xl ${lang === "si" ? "font-si" : ""}`}>
           {doc?.title ?? "Loading…"}
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 print:hidden">
           <PomodoroButton />
           <button onClick={toggleLang} disabled={translating} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium transition hover:border-primary/40 disabled:opacity-60">
             {translating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
@@ -57,7 +63,7 @@ function DocumentPage() {
       </div>
 
       <Tabs defaultValue="summary" className="mt-8">
-        <TabsList>
+        <TabsList className="print:hidden">
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="flashcards">Flashcards</TabsTrigger>
           <TabsTrigger value="quiz">Quiz</TabsTrigger>
@@ -155,11 +161,15 @@ function SummaryView({ documentId, lang }: { documentId: string; lang: Lang }) {
     a.href = url; a.download = `summary-${documentId.slice(0, 8)}.md`;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
-    toast.success("Downloaded");
+    toast.success("Downloaded Markdown");
+  }
+
+  async function exportPDF() {
+    window.print();
   }
 
   return (
-    <article className={`relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card/80 to-card/40 p-6 md:p-8 leading-relaxed text-foreground shadow-sm ${lang === "si" ? "font-si" : ""}`}>
+    <article id="summary-content-export" className={`relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card/80 to-card/40 p-6 md:p-8 leading-relaxed text-foreground shadow-sm ${lang === "si" ? "font-si" : ""}`}>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex flex-wrap items-center gap-3">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-[hsl(0_85%_62%/0.12)] px-2.5 py-1 font-medium text-[hsl(0_85%_62%)]">
@@ -172,9 +182,21 @@ function SummaryView({ documentId, lang }: { documentId: string; lang: Lang }) {
           <span className="h-1.5 w-1.5 rounded-full bg-foreground/60" /> Normal
         </span>
         </div>
-        <Button size="sm" variant="outline" onClick={exportMarkdown}>
-          <Download className="mr-1.5 h-3.5 w-3.5" /> Export
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline" className="print:hidden">
+              <Download className="mr-1.5 h-3.5 w-3.5" /> Export
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={exportMarkdown} className="cursor-pointer">
+              Download as Markdown
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={exportPDF} className="cursor-pointer">
+              Download as PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <div className="prose-summary" dangerouslySetInnerHTML={renderMarkdown(content)} />
     </article>
@@ -656,7 +678,10 @@ function PaperRunner({ paperId, onExit }: { paperId: string; onExit: () => void 
           <p className="font-semibold">{paper.title}</p>
           <p className="text-xs text-muted-foreground">{questions.length} questions</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 print:hidden">
+          <Button size="sm" variant="outline" onClick={() => window.print()} title="Download as PDF">
+            <Download className="mr-1.5 h-3.5 w-3.5" /> PDF
+          </Button>
           <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold tabular-nums ${
             seconds < 60 && !submitted ? "bg-destructive/15 text-destructive" : "bg-primary/15 text-primary"
           }`}>
@@ -746,8 +771,8 @@ function PaperRunner({ paperId, onExit }: { paperId: string; onExit: () => void 
         </div>
       ))}
 
-      {!submitted && (
-        <Button size="lg" className="w-full" onClick={() => setSubmitted(true)}>
+        {!submitted && (
+        <Button size="lg" className="w-full print:hidden" onClick={() => setSubmitted(true)}>
           Submit paper
         </Button>
       )}
