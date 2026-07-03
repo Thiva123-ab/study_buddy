@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-const MODEL = "gemini-1.5-pro-latest";
+const MODEL = "gemini-2.5-flash";
 const MAX_TEXT = 60000;
 
 function truncate(text: string) {
