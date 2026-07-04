@@ -58,6 +58,10 @@ async function generateAiText(options: any): Promise<string> {
     temperature: 0.7,
     maxOutputTokens: 8192,
   };
+  
+  if (options.responseMimeType) {
+    body.generationConfig.responseMimeType = options.responseMimeType;
+  }
 
   try {
     const response = await fetch(url, {
@@ -95,15 +99,40 @@ function parseAiJson<T>(raw: string, schema: z.ZodSchema<T>): T {
       .replace(/```/g, "")
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
       .trim();
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
+      
+    const firstBrace = cleaned.indexOf("{");
+    const firstBracket = cleaned.indexOf("[");
+    let start = -1;
+    let end = -1;
+
+    if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+      start = firstBrace;
+      end = cleaned.lastIndexOf("}");
+    } else if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
+      start = firstBracket;
+      end = cleaned.lastIndexOf("]");
+    }
 
     if (start === -1 || end === -1 || end <= start) {
       throw new Error("No JSON object found");
     }
 
     const json = cleaned.slice(start, end + 1).replace(/,\s*([}\]])/g, "$1");
-    return schema.parse(JSON.parse(json));
+    let parsed = JSON.parse(json);
+    
+    // Auto-wrap if it's an array but schema might expect an object
+    if (Array.isArray(parsed)) {
+      const res = schema.safeParse(parsed);
+      if (!res.success) {
+        const asCards = schema.safeParse({ cards: parsed });
+        if (asCards.success) return asCards.data as T;
+        
+        const asQuestions = schema.safeParse({ questions: parsed });
+        if (asQuestions.success) return asQuestions.data as T;
+      }
+    }
+
+    return schema.parse(parsed);
   } catch (error) {
     console.error("AI JSON parse failed", { error, preview: raw.slice(0, 500) });
     throw new Error("The AI response was not formatted correctly. Please try again.");
@@ -319,6 +348,7 @@ export const generateFlashcards = createServerFn({ method: "POST" })
     const { getGateway } = await import("./ai-gateway.server");
     const text = await generateAiText({
       model: getGateway()(MODEL),
+      responseMimeType: "application/json",
       prompt: `Create COMPREHENSIVE study flashcards from this material. Cover EVERY key term, definition, concept, formula, date, name, example, and relationship in the document — do not skip topics. Generate as many cards as needed for full coverage (typically 20-40, more if the material is long).
 
 Return ONLY valid JSON in this exact shape, with no markdown fences and no commentary:
@@ -370,6 +400,7 @@ export const generateQuiz = createServerFn({ method: "POST" })
     const { getGateway } = await import("./ai-gateway.server");
     const text = await generateAiText({
       model: getGateway()(MODEL),
+      responseMimeType: "application/json",
       prompt: `Create a COMPREHENSIVE multiple-choice quiz from this material. Cover EVERY major topic, section, definition, fact, formula, and example in the document — do not skip topics. Generate as many questions as needed for full coverage (typically 15-25, more if the material is long).
 
 Return ONLY valid JSON in this exact shape, with no markdown fences and no commentary:
@@ -426,6 +457,7 @@ export const translateToSinhala = createServerFn({ method: "POST" })
       });
       const text = await generateAiText({
         model: gateway(MODEL),
+        responseMimeType: "application/json",
         prompt: `Translate these flashcards from English to natural Sinhala.
 
 Return ONLY valid JSON in this exact shape, with no markdown fences and no commentary:
@@ -433,7 +465,7 @@ Return ONLY valid JSON in this exact shape, with no markdown fences and no comme
 
 Return the same number of cards in order.
 
-${JSON.stringify(cards.map((c) => ({ front: c.front_en, back: c.back_en })))}`,
+${JSON.stringify({ cards: cards.map((c) => ({ front: c.front_en, back: c.back_en })) })}`,
       });
       const translated = parseAiJson(text, Sch).cards;
       await Promise.all(cards.map((c, i) => {
@@ -456,6 +488,7 @@ ${JSON.stringify(cards.map((c) => ({ front: c.front_en, back: c.back_en })))}`,
       });
       const text = await generateAiText({
         model: gateway(MODEL),
+        responseMimeType: "application/json",
         prompt: `Translate these quiz questions from English to natural Sinhala.
 
 Return ONLY valid JSON in this exact shape, with no markdown fences and no commentary:
@@ -463,7 +496,7 @@ Return ONLY valid JSON in this exact shape, with no markdown fences and no comme
 
 Keep the same option order. Return the same number of questions in order.
 
-${JSON.stringify(qs.map((q) => ({ question: q.question_en, options: q.options_en, explanation: q.explanation_en })))}`,
+${JSON.stringify({ questions: qs.map((q) => ({ question: q.question_en, options: q.options_en, explanation: q.explanation_en })) })}`,
       });
       const translated = parseAiJson(text, Sch).questions;
       await Promise.all(qs.map((q, i) => {
@@ -557,6 +590,7 @@ export const generatePaper = createServerFn({ method: "POST" })
 
     const text = await generateAiText({
       model: getGateway()(MODEL),
+      responseMimeType: "application/json",
       prompt: `You are an expert exam-paper writer. Build a high-quality practice exam paper from the material below.
 
 Generate EXACTLY:
@@ -673,6 +707,7 @@ export const generateMultiPaper = createServerFn({ method: "POST" })
 
     const text = await generateAiText({
       model: getGateway()(MODEL),
+      responseMimeType: "application/json",
       prompt: `You are an expert exam-paper writer. Build a high-quality practice exam paper combining the ${docs.length} source documents below.
 
 Generate EXACTLY:
