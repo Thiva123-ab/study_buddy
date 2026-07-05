@@ -8,8 +8,8 @@ function createSupabaseClient() {
   const isBrowser = typeof window !== 'undefined';
   const processEnv = !isBrowser && typeof process !== 'undefined' ? process.env : {};
   
-  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || processEnv.SUPABASE_URL;
-  const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || processEnv.SUPABASE_PUBLISHABLE_KEY;
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || processEnv.VITE_SUPABASE_URL || processEnv.SUPABASE_URL;
+  const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || processEnv.VITE_SUPABASE_PUBLISHABLE_KEY || processEnv.SUPABASE_PUBLISHABLE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
