@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { jsonrepair } from "jsonrepair";
 
 const MODEL = "gemini-2.5-flash";
 const MAX_TEXT = 60000;
@@ -66,6 +67,9 @@ async function generateAiText(options: any): Promise<string> {
   if (options.responseMimeType) {
     body.generationConfig.responseMimeType = options.responseMimeType;
   }
+  if (options.responseSchema) {
+    body.generationConfig.responseSchema = options.responseSchema;
+  }
 
   try {
     const response = await fetch(url, {
@@ -98,12 +102,18 @@ async function generateAiText(options: any): Promise<string> {
 
 function parseAiJson<T>(raw: string, schema: z.ZodSchema<T>): T {
   try {
-    const cleaned = raw
+    let cleaned = raw
       .replace(/```json\s*/gi, "")
       .replace(/```/g, "")
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
       .trim();
       
+    try {
+      cleaned = jsonrepair(cleaned);
+    } catch (repairErr) {
+      console.warn("jsonrepair could not repair the JSON, falling back", repairErr);
+    }
+
     const firstBrace = cleaned.indexOf("{");
     const firstBracket = cleaned.indexOf("[");
     let start = -1;
@@ -117,11 +127,11 @@ function parseAiJson<T>(raw: string, schema: z.ZodSchema<T>): T {
       end = cleaned.lastIndexOf("]");
     }
 
-    if (start === -1 || end === -1 || end <= start) {
-      throw new Error("No JSON object found");
+    let json = cleaned;
+    if (start !== -1 && end !== -1 && end > start) {
+      json = cleaned.slice(start, end + 1).replace(/,\s*([}\]])/g, "$1");
     }
 
-    const json = cleaned.slice(start, end + 1).replace(/,\s*([}\]])/g, "$1");
     let parsed = JSON.parse(json);
     
     // Auto-wrap if it's an array but schema might expect an object
@@ -354,6 +364,23 @@ export const generateFlashcards = createServerFn({ method: "POST" })
     const text = await generateAiText({
       model: getGateway()(MODEL),
       responseMimeType: "application/json",
+      responseSchema: {
+        type: "OBJECT",
+        properties: {
+          cards: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                front: { type: "STRING" },
+                back: { type: "STRING" }
+              },
+              required: ["front", "back"]
+            }
+          }
+        },
+        required: ["cards"]
+      },
       prompt: `Create COMPREHENSIVE study flashcards from this material. Cover EVERY key term, definition, concept, formula, date, name, example, and relationship in the document — do not skip topics. Generate as many cards as needed for full coverage (typically 20-40, more if the material is long).
 
 Return ONLY valid JSON in this exact shape, with no markdown fences and no commentary:
@@ -406,6 +433,25 @@ export const generateQuiz = createServerFn({ method: "POST" })
     const text = await generateAiText({
       model: getGateway()(MODEL),
       responseMimeType: "application/json",
+      responseSchema: {
+        type: "OBJECT",
+        properties: {
+          questions: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                question: { type: "STRING" },
+                options: { type: "ARRAY", items: { type: "STRING" } },
+                correctIndex: { type: "INTEGER" },
+                explanation: { type: "STRING" }
+              },
+              required: ["question", "options", "correctIndex", "explanation"]
+            }
+          }
+        },
+        required: ["questions"]
+      },
       prompt: `Create a COMPREHENSIVE multiple-choice quiz from this material. Cover EVERY major topic, section, definition, fact, formula, and example in the document — do not skip topics. Generate as many questions as needed for full coverage (typically 15-25, more if the material is long).
 
 Return ONLY valid JSON in this exact shape, with no markdown fences and no commentary:
@@ -596,6 +642,28 @@ export const generatePaper = createServerFn({ method: "POST" })
     const text = await generateAiText({
       model: getGateway()(MODEL),
       responseMimeType: "application/json",
+      responseSchema: {
+        type: "OBJECT",
+        properties: {
+          questions: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                type: { type: "STRING" },
+                question: { type: "STRING" },
+                options: { type: "ARRAY", items: { type: "STRING" } },
+                correctIndex: { type: "INTEGER" },
+                modelAnswer: { type: "STRING" },
+                blanks: { type: "ARRAY", items: { type: "STRING" } },
+                marks: { type: "INTEGER" }
+              },
+              required: ["type", "question"]
+            }
+          }
+        },
+        required: ["questions"]
+      },
       prompt: `You are an expert exam-paper writer. Build a high-quality practice exam paper from the material below.
 
 Generate EXACTLY:
@@ -713,6 +781,28 @@ export const generateMultiPaper = createServerFn({ method: "POST" })
     const text = await generateAiText({
       model: getGateway()(MODEL),
       responseMimeType: "application/json",
+      responseSchema: {
+        type: "OBJECT",
+        properties: {
+          questions: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                type: { type: "STRING" },
+                question: { type: "STRING" },
+                options: { type: "ARRAY", items: { type: "STRING" } },
+                correctIndex: { type: "INTEGER" },
+                modelAnswer: { type: "STRING" },
+                blanks: { type: "ARRAY", items: { type: "STRING" } },
+                marks: { type: "INTEGER" }
+              },
+              required: ["type", "question"]
+            }
+          }
+        },
+        required: ["questions"]
+      },
       prompt: `You are an expert exam-paper writer. Build a high-quality practice exam paper combining the ${docs.length} source documents below.
 
 Generate EXACTLY:
