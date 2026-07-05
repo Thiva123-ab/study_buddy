@@ -24,6 +24,10 @@ async function generateAiText(options: any): Promise<string> {
     // system instruction handled separately
   }
   
+  if (options.responseMimeType === "application/json" && options.prompt) {
+    options.prompt += "\n\nCRITICAL: You are outputting JSON. You MUST properly escape any internal double quotes inside your string values (e.g. using \\\") and ensure there are no missing commas between array elements or object properties. Your output will be parsed by JSON.parse() and will crash if the syntax is invalid.";
+  }
+
   if (options.prompt) {
     contents.push({ role: "user", parts: [{ text: options.prompt }] });
   } else if (options.messages) {
@@ -135,7 +139,8 @@ function parseAiJson<T>(raw: string, schema: z.ZodSchema<T>): T {
     return schema.parse(parsed);
   } catch (error) {
     console.error("AI JSON parse failed", { error, preview: raw.slice(0, 500) });
-    throw new Error("The AI response was not formatted correctly. Please try again.");
+    const msg = error instanceof z.ZodError ? error.errors.map(e => e.path.join('.') + ': ' + e.message).join(', ') : (error instanceof Error ? error.message : "Unknown error");
+    throw new Error(`AI formatting error: ${msg}`);
   }
 }
 
@@ -458,7 +463,7 @@ export const translateToSinhala = createServerFn({ method: "POST" })
       const text = await generateAiText({
         model: gateway(MODEL),
         responseMimeType: "application/json",
-        prompt: `Translate these flashcards from English to natural Sinhala.
+        prompt: `Translate the text inside these flashcards from English to natural Sinhala. IMPORTANT: DO NOT translate the JSON keys (e.g., keep "cards", "front", "back" in English). Only translate the content strings.
 
 Return ONLY valid JSON in this exact shape, with no markdown fences and no commentary:
 {"cards":[{"front":"translated front","back":"translated back"}]}
@@ -489,7 +494,7 @@ ${JSON.stringify({ cards: cards.map((c) => ({ front: c.front_en, back: c.back_en
       const text = await generateAiText({
         model: gateway(MODEL),
         responseMimeType: "application/json",
-        prompt: `Translate these quiz questions from English to natural Sinhala.
+        prompt: `Translate these quiz questions from English to natural Sinhala. IMPORTANT: DO NOT translate the JSON keys (e.g., keep "questions", "question", "options", "explanation" in English). Only translate the content strings.
 
 Return ONLY valid JSON in this exact shape, with no markdown fences and no commentary:
 {"questions":[{"question":"translated question","options":["A","B","C","D"],"explanation":"translated explanation"}]}
