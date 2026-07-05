@@ -154,9 +154,8 @@ function parseAiJson<T>(raw: string, schema: z.ZodSchema<T>): T {
   }
 }
 
-async function extractFromFile(file: File): Promise<string> {
+async function extractFromFile(file: File, buf: Uint8Array): Promise<string> {
   const name = file.name.toLowerCase();
-  const buf = new Uint8Array(await file.arrayBuffer());
 
   if (name.endsWith(".docx")) {
     const mammoth = await import("mammoth");
@@ -166,23 +165,28 @@ async function extractFromFile(file: File): Promise<string> {
 
   // PDF -> extract text locally with pdfjs-dist
   if (name.endsWith(".pdf")) {
-    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    const loadingTask = pdfjsLib.getDocument({ data: buf });
-    const pdfDoc = await loadingTask.promise;
-    const pages: string[] = [];
-    for (let i = 1; i <= pdfDoc.numPages; i++) {
-      const page = await pdfDoc.getPage(i);
-      const content = await page.getTextContent();
-      const pageText = content.items
-        .map((item: any) => item.str)
-        .join(" ");
-      pages.push(pageText);
+    try {
+      const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+      const loadingTask = pdfjsLib.getDocument({ data: buf });
+      const pdfDoc = await loadingTask.promise;
+      const pages: string[] = [];
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        const page = await pdfDoc.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items
+          .map((item: any) => item.str)
+          .join(" ");
+        pages.push(pageText);
+      }
+      const fullText = pages.join("\n\n");
+      if (fullText.trim().length > 10) {
+        return fullText;
+      }
+      throw new Error("PDF appears to be empty or image-based.");
+    } catch (e: any) {
+      console.error("PDF Parsing Error:", e);
+      throw new Error("Failed to parse PDF. It might be corrupted, password-protected, or unsupported.");
     }
-    const fullText = pages.join("\n\n");
-    if (fullText.trim().length > 10) {
-      return fullText;
-    }
-    throw new Error("Could not extract text from PDF. The PDF may be image-based or empty.");
   }
 
   // Images -> convert to base64 and ask AI to describe/extract text
@@ -256,7 +260,8 @@ export const createDocumentFromFile = createServerFn({ method: "POST" })
     return { file, title: typeof title === "string" && title ? title : file.name };
   })
   .handler(async ({ data, context }) => {
-    const text = await extractFromFile(data.file);
+    const bytes = new Uint8Array(await data.file.arrayBuffer());
+    const text = await extractFromFile(data.file, bytes);
     if (!text || text.trim().length < 10) {
       throw new Error("Could not extract enough text from this file.");
     }
@@ -264,7 +269,6 @@ export const createDocumentFromFile = createServerFn({ method: "POST" })
     // Upload original to storage
     const ext = data.file.name.split(".").pop() || "bin";
     const path = `${context.userId}/${crypto.randomUUID()}.${ext}`;
-    const bytes = new Uint8Array(await data.file.arrayBuffer());
     const { error: upErr } = await context.supabase.storage
       .from("study-uploads")
       .upload(path, bytes, { contentType: data.file.type || undefined });
