@@ -364,7 +364,7 @@ function QuizView({ documentId, lang }: { documentId: string; lang: Lang }) {
         </div>
       )}
       {qs.map((q, i) => {
-        const opts = (lang === "si" ? q.options_si : q.options_en) as string[];
+        const opts = ((lang === "si" ? q.options_si : q.options_en) as string[]) ?? [];
         const question = lang === "si" ? q.question_si : q.question_en;
         const chosen = answers[q.id];
         return (
@@ -773,7 +773,7 @@ function PaperRunner({ paperId, onExit }: { paperId: string; onExit: () => void 
 
           {q.type === "mcq" && (
             <div className="space-y-2">
-              {(q.options as string[]).map((opt, oi) => {
+              {((q.options as string[]) ?? []).map((opt, oi) => {
                 const chosen = answers[q.id] === oi;
                 const isCorrect = q.correct_index === oi;
                 return (

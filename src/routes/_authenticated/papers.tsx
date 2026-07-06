@@ -301,7 +301,7 @@ function PaperRunner({ paperId, onExit }: { paperId: string; onExit: () => void 
 
           {q.type === "mcq" && (
             <div className="space-y-2">
-              {(q.options as string[]).map((opt, oi) => {
+              {((q.options as string[]) ?? []).map((opt, oi) => {
                 const chosen = answers[q.id] === oi;
                 const isCorrect = q.correct_index === oi;
                 return (
