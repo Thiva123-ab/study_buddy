@@ -11,12 +11,11 @@ function truncate(text: string) {
 }
 
 async function generateAiText(options: any): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("Missing GEMINI_API_KEY environment variable");
+  const apiKeys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_2].filter(Boolean);
+  if (apiKeys.length === 0) throw new Error("Missing GEMINI_API_KEY environment variable");
 
   // Build the request for Google Gemini REST API directly
   const model = MODEL;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   // Convert AI SDK format to Gemini format
   const contents: any[] = [];
@@ -71,36 +70,51 @@ async function generateAiText(options: any): Promise<string> {
     body.generationConfig.responseSchema = options.responseSchema;
   }
 
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+  let lastError: any = null;
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("Gemini API error:", response.status, errText);
-      if (response.status === 429) {
-        throw new Error("You have exceeded the Gemini API rate limit (too many requests). Please wait a minute and try again.");
+  for (const apiKey of apiKeys) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("Gemini API error:", response.status, errText);
+        if (response.status === 429) {
+          lastError = new Error("You have exceeded the Gemini API rate limit (too many requests). Please wait a minute and try again.");
+          continue; // Try the next key!
+        }
+        throw new Error(`Gemini API error (${response.status}): ${errText}`);
       }
-      throw new Error(`Gemini API error (${response.status}): ${errText}`);
-    }
 
-    const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      console.error("Gemini returned no text:", JSON.stringify(data).slice(0, 500));
-      throw new Error("Gemini returned an empty response.");
+      const data = await response.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) {
+        console.error("Gemini returned no text:", JSON.stringify(data).slice(0, 500));
+        throw new Error("Gemini returned an empty response.");
+      }
+      return text;
+    } catch (error: any) {
+      if (error instanceof Error && error.message.includes("rate limit")) {
+        lastError = error;
+        continue; // Try next key if it's a rate limit error
+      }
+      
+      console.error("AI generation failed", error);
+      if (error instanceof Error && error.message.includes("Gemini API error")) {
+        throw error; // Throw the real error to the frontend so we can see why it failed
+      }
+      throw new Error("AI generation failed. Please try again with shorter or clearer study material.");
     }
-    return text;
-  } catch (error: any) {
-    console.error("AI generation failed", error);
-    if (error instanceof Error && error.message.includes("Gemini API error")) {
-      throw error; // Throw the real error to the frontend so we can see why it failed
-    }
-    throw new Error("AI generation failed. Please try again with shorter or clearer study material.");
   }
+
+  // If we exhaust all keys and still have a rate limit error, throw it
+  throw lastError;
 }
 
 function parseAiJson<T>(raw: string, schema: z.ZodSchema<T>): T {
