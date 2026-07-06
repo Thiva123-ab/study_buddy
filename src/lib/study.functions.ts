@@ -81,6 +81,9 @@ async function generateAiText(options: any): Promise<string> {
     if (!response.ok) {
       const errText = await response.text();
       console.error("Gemini API error:", response.status, errText);
+      if (response.status === 429) {
+        throw new Error("You have exceeded the Gemini API rate limit (too many requests). Please wait a minute and try again.");
+      }
       throw new Error(`Gemini API error (${response.status}): ${errText}`);
     }
 
@@ -561,6 +564,61 @@ ${JSON.stringify({ questions: qs.map((q) => ({ question: q.question_en, options:
           question_si: t.question, options_si: t.options, explanation_si: t.explanation,
         }).eq("id", q.id);
       }));
+    }
+
+    // Papers
+    const { data: papers } = await context.supabase
+      .from("papers").select("*").eq("document_id", data.documentId);
+    
+    if (papers && papers.length > 0) {
+      for (const p of papers) {
+        if (!p.title_si) {
+          const text = await generateAiText({
+            model: gateway(MODEL),
+            prompt: `Translate the following paper title into natural Sinhala (සිංහල). Return only the translation.\n\n${p.title}`,
+          });
+          await context.supabase.from("papers").update({ title_si: text }).eq("id", p.id);
+        }
+
+        const { data: pqs } = await context.supabase
+          .from("paper_questions").select("*").eq("paper_id", p.id).order("position");
+        
+        if (pqs && pqs.length > 0 && pqs.some((q) => !q.question_si)) {
+          const Sch = z.object({
+            questions: z.array(z.object({
+              question: z.string(),
+              options: z.array(z.string()).nullable().optional(),
+              modelAnswer: z.string().nullable().optional(),
+              blanks: z.array(z.string()).nullable().optional(),
+            })),
+          });
+          
+          const text = await generateAiText({
+            model: gateway(MODEL),
+            responseMimeType: "application/json",
+            prompt: `Translate these paper questions from English to natural Sinhala. IMPORTANT: DO NOT translate the JSON keys (e.g., keep "questions", "question", "options", "modelAnswer", "blanks" in English). Only translate the content strings inside. If a value is null or missing, keep it null.
+            
+Return ONLY valid JSON in this exact shape, with no markdown fences and no commentary:
+{"questions":[{"question":"translated question","options":["A","B"],"modelAnswer":"translated answer","blanks":["translated blank"]}]}
+
+Keep the same order. Return the same number of questions in order.
+
+${JSON.stringify({ questions: pqs.map((q) => ({ question: q.question, options: q.options, modelAnswer: q.model_answer, blanks: q.blanks })) })}`,
+          });
+          
+          const translated = parseAiJson(text, Sch).questions;
+          await Promise.all(pqs.map((q, i) => {
+            const t = translated[i];
+            if (!t) return Promise.resolve();
+            return context.supabase.from("paper_questions").update({
+              question_si: t.question,
+              options_si: t.options ?? null,
+              model_answer_si: t.modelAnswer ?? null,
+              blanks_si: t.blanks ?? null,
+            }).eq("id", q.id);
+          }));
+        }
+      }
     }
 
     return { ok: true };

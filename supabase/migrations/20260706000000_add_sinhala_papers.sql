@@ -1,0 +1,1 @@
+ALTER TABLE public.papers ADD COLUMN IF NOT EXISTS title_si TEXT; ALTER TABLE public.paper_questions ADD COLUMN IF NOT EXISTS question_si TEXT; ALTER TABLE public.paper_questions ADD COLUMN IF NOT EXISTS options_si JSONB; ALTER TABLE public.paper_questions ADD COLUMN IF NOT EXISTS model_answer_si TEXT; ALTER TABLE public.paper_questions ADD COLUMN IF NOT EXISTS blanks_si JSONB;
