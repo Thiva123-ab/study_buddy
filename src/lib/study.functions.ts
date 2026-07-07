@@ -375,7 +375,7 @@ ${doc.extracted_text}`,
 
 // === Flashcards ===
 const FlashcardsSchema = z.object({
-  cards: z.array(z.object({ front: z.string(), back: z.string() })),
+  cards: z.array(z.object({ front: z.string().catch(''), back: z.string().catch('') })).catch([]),
 });
 
 export const generateFlashcards = createServerFn({ method: "POST" })
@@ -440,10 +440,10 @@ ${doc.extracted_text}`,
 // === Quiz ===
 const QuizSchema = z.object({
   questions: z.array(z.object({
-    question: z.string(),
-    options: z.array(z.string()),
+    question: z.string().catch(""),
+    options: z.array(z.string().catch("")).catch([]),
     correctIndex: z.number().int().min(0).max(3),
-    explanation: z.string(),
+    explanation: z.string().catch(""),
   })),
 });
 
@@ -543,7 +543,7 @@ ${summary.content_en}`,
       .from("flashcards").select("*").eq("document_id", data.documentId).order("position");
     if (cards && cards.length > 0 && cards.some((c) => !c.front_si)) {
       const Sch = z.object({
-        cards: z.array(z.object({ front: z.string(), back: z.string() })),
+        cards: z.array(z.object({ front: z.string().catch(""), back: z.string().catch("") })).catch([]),
       });
       const text = await generateAiText({
         model: gateway(MODEL),
@@ -575,9 +575,9 @@ ${JSON.stringify({ cards: cards.map((c) => ({ front: c.front_en, back: c.back_en
     if (qs && qs.length > 0 && qs.some((q) => !q.question_si)) {
       const Sch = z.object({
         questions: z.array(z.object({
-          question: z.string(),
-          options: z.array(z.string()),
-          explanation: z.string(),
+          question: z.string().catch(""),
+          options: z.array(z.string().catch("")).catch([]),
+          explanation: z.string().catch(""),
         })),
       });
       const text = await generateAiText({
@@ -626,10 +626,10 @@ ${JSON.stringify({ questions: qs.map((q) => ({ question: q.question_en, options:
         if (pqs && pqs.length > 0 && pqs.some((q) => !q.question_si)) {
           const Sch = z.object({
             questions: z.array(z.object({
-              question: z.string(),
-              options: z.array(z.string()).nullable().optional(),
-              modelAnswer: z.string().nullable().optional(),
-              blanks: z.array(z.string()).nullable().optional(),
+              question: z.string().catch(""),
+              options: z.array(z.string().catch("")).nullable().optional().catch([]),
+              modelAnswer: z.string().nullable().optional().catch(""),
+              blanks: z.array(z.string().catch("")).nullable().optional().catch([]),
             })),
           });
           
@@ -708,11 +708,11 @@ export const recordQuizAttempt = createServerFn({ method: "POST" })
 const PaperGenSchema = z.object({
   questions: z.array(z.object({
     type: z.enum(["mcq", "essay", "fill_blank", "short"]),
-    question: z.string(),
-    options: z.array(z.string()).optional(),
+    question: z.string().catch(""),
+    options: z.array(z.string().catch("")).optional().catch([]),
     correctIndex: z.number().int().optional(),
-    modelAnswer: z.string().optional(),
-    blanks: z.array(z.string()).optional(),
+    modelAnswer: z.string().optional().catch(""),
+    blanks: z.array(z.string().catch("")).optional().catch([]),
     marks: z.number().int().min(1).max(20).optional(),
   })),
 });
