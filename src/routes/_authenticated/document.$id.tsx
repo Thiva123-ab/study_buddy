@@ -105,7 +105,7 @@ function DocumentPage() {
   return (
     <main className="container mx-auto max-w-4xl px-6 py-8">
       <Link to="/dashboard" className="mb-4 inline-flex items-center text-sm text-muted-foreground hover:text-foreground print:hidden">
-        <ArrowLeft className="mr-1 h-4 w-4" /> All sets
+        <ArrowLeft className="mr-1 h-4 w-4" /> {lang === 'si' ? 'සියලුම කට්ටල' : 'All sets'}
       </Link>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className={`font-display text-3xl font-semibold md:text-4xl ${lang === "si" ? "font-si" : ""}`}>
@@ -124,29 +124,29 @@ function DocumentPage() {
 
       <Tabs defaultValue="summary" className="mt-8">
         <TabsList className="print:hidden">
-          <TabsTrigger value="summary">Summary</TabsTrigger>
-          <TabsTrigger value="flashcards">Flashcards</TabsTrigger>
-          <TabsTrigger value="quiz">Quiz</TabsTrigger>
-          <TabsTrigger value="paper"><FileText className="mr-1 h-3 w-3" />Papers</TabsTrigger>
-          <TabsTrigger value="chat"><MessageSquare className="mr-1 h-3 w-3" />Chat</TabsTrigger>
+          <TabsTrigger value="summary">{lang === 'si' ? 'සාරාංශය' : 'Summary'}</TabsTrigger>
+          <TabsTrigger value="flashcards">{lang === 'si' ? 'ෆ්ලෑෂ් කාඩ්' : 'Flashcards'}</TabsTrigger>
+          <TabsTrigger value="quiz">{lang === 'si' ? 'ප්‍රශ්නාවලිය' : 'Quiz'}</TabsTrigger>
+          <TabsTrigger value="paper"><FileText className="mr-1 h-3 w-3" />{lang === 'si' ? 'ප්‍රශ්න පත්‍ර' : 'Papers'}</TabsTrigger>
+          <TabsTrigger value="chat"><MessageSquare className="mr-1 h-3 w-3" />{lang === 'si' ? 'කතාබස්' : 'Chat'}</TabsTrigger>
         </TabsList>
         <TabsContent value="summary" className="mt-6"><SummaryView documentId={id} lang={lang} /></TabsContent>
         <TabsContent value="flashcards" className="mt-6"><FlashcardsView documentId={id} lang={lang} /></TabsContent>
         <TabsContent value="quiz" className="mt-6"><QuizView documentId={id} lang={lang} /></TabsContent>
         <TabsContent value="paper" className="mt-6"><PaperView documentId={id} lang={lang} /></TabsContent>
-        <TabsContent value="chat" className="mt-6"><ChatView documentId={id} /></TabsContent>
+        <TabsContent value="chat" className="mt-6"><ChatView documentId={id} lang={lang} /></TabsContent>
       </Tabs>
     </main>
   );
 }
 
-function PendingBox({ label, onGenerate, loading }: { label: string; onGenerate: () => void; loading: boolean }) {
+function PendingBox({ label, onGenerate, loading, lang }: { label: string; onGenerate: () => void; loading: boolean; lang?: Lang }) {
   return (
     <div className="grid place-items-center rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
       <p className="text-muted-foreground">{label}</p>
       <Button onClick={onGenerate} disabled={loading} className="mt-4">
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Generate now
+        {lang === 'si' ? 'දැන් සාදන්න' : 'Generate now'}
       </Button>
     </div>
   );
@@ -209,7 +209,7 @@ function SummaryView({ documentId, lang }: { documentId: string; lang: Lang }) {
   }
 
   if (!loaded) return <Skeleton />;
-  if (!row) return <PendingBox label="Generate a summary of this material." onGenerate={generate} loading={loading} />;
+  if (!row) return <PendingBox label={lang === 'si' ? 'මෙම කරුණු වල සාරාංශයක් සාදන්න.' : 'Generate a summary of this material.'} onGenerate={generate} loading={loading} lang={lang} />;
 
   const content = lang === "si" ? row.content_si : row.content_en;
   if (lang === "si" && !content) return <p className="text-muted-foreground">Translating…</p>;
@@ -233,27 +233,27 @@ function SummaryView({ documentId, lang }: { documentId: string; lang: Lang }) {
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex flex-wrap items-center gap-3">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-[hsl(0_85%_62%/0.12)] px-2.5 py-1 font-medium text-[hsl(0_85%_62%)]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[hsl(0_85%_62%)]" /> Critical
+          <span className="h-1.5 w-1.5 rounded-full bg-[hsl(0_85%_62%)]" /> {lang === 'si' ? 'අත්‍යවශ්‍ය' : 'Critical'}
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-[hsl(212_90%_60%/0.12)] px-2.5 py-1 font-medium text-[hsl(212_90%_60%)]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[hsl(212_90%_60%)]" /> Important
+          <span className="h-1.5 w-1.5 rounded-full bg-[hsl(212_90%_60%)]" /> {lang === 'si' ? 'වැදගත්' : 'Important'}
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 font-medium text-muted-foreground">
-          <span className="h-1.5 w-1.5 rounded-full bg-foreground/60" /> Normal
+          <span className="h-1.5 w-1.5 rounded-full bg-foreground/60" /> {lang === 'si' ? 'සාමාන්‍ය' : 'Normal'}
         </span>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm" variant="outline" className="print:hidden">
-              <Download className="mr-1.5 h-3.5 w-3.5" /> Export
+              <Download className="mr-1.5 h-3.5 w-3.5" /> {lang === 'si' ? 'අපනයනය' : 'Export'}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={exportMarkdown} className="cursor-pointer">
-              Download as Markdown
+              {lang === 'si' ? 'Markdown ලෙස බාගන්න' : 'Download as Markdown'}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={exportPDF} className="cursor-pointer">
-              Download as PDF
+              {lang === 'si' ? 'PDF ලෙස බාගන්න' : 'Download as PDF'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -283,7 +283,7 @@ function FlashcardsView({ documentId, lang }: { documentId: string; lang: Lang }
   }
 
   if (cards === null) return <Skeleton />;
-  if (cards.length === 0) return <PendingBox label="Generate flashcards from this material." onGenerate={generate} loading={loading} />;
+  if (cards.length === 0) return <PendingBox label={lang === 'si' ? 'මෙම කරුණු වලින් ෆ්ලෑෂ් කාඩ් සාදන්න.' : 'Generate flashcards from this material.'} onGenerate={generate} loading={loading} lang={lang} />;
 
   const c = cards[idx];
   const front = lang === "si" ? c.front_si : c.front_en;
@@ -292,27 +292,27 @@ function FlashcardsView({ documentId, lang }: { documentId: string; lang: Lang }
 
   return (
     <div>
-      <p className="mb-4 text-center text-sm text-muted-foreground">Card {idx + 1} of {cards.length}</p>
+      <p className="mb-4 text-center text-sm text-muted-foreground">{lang === 'si' ? `කාඩ්පත ${idx + 1} / ${cards.length}` : `Card ${idx + 1} of ${cards.length}`}</p>
       <div className="relative mx-auto h-72 max-w-2xl cursor-pointer [perspective:1200px]" onClick={() => setFlipped((f) => !f)}>
         <motion.div animate={{ rotateY: flipped ? 180 : 0 }} transition={{ duration: 0.5 }} className="relative h-full w-full [transform-style:preserve-3d]">
           <div className={`absolute inset-0 grid place-items-center rounded-2xl border border-border bg-card p-8 text-center [backface-visibility:hidden] ${lang === "si" ? "font-si" : ""}`}>
             <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Question</p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">{lang === 'si' ? 'ප්‍රශ්නය' : 'Question'}</p>
               <p className="mt-3 text-2xl font-medium">{front}</p>
             </div>
           </div>
           <div className={`absolute inset-0 grid place-items-center rounded-2xl border border-primary/40 bg-accent p-8 text-center [transform:rotateY(180deg)] [backface-visibility:hidden] ${lang === "si" ? "font-si" : ""}`}>
             <div>
-              <p className="text-xs uppercase tracking-wider text-primary">Answer</p>
+              <p className="text-xs uppercase tracking-wider text-primary">{lang === 'si' ? 'පිළිතුර' : 'Answer'}</p>
               <p className="mt-3 text-xl">{back}</p>
             </div>
           </div>
         </motion.div>
       </div>
       <div className="mt-6 flex items-center justify-center gap-3">
-        <Button variant="outline" onClick={() => { setFlipped(false); setIdx((i) => Math.max(0, i - 1)); }} disabled={idx === 0}>Prev</Button>
-        <Button variant="ghost" onClick={() => setFlipped((f) => !f)}><RotateCcw className="mr-2 h-4 w-4" /> Flip</Button>
-        <Button onClick={() => { setFlipped(false); setIdx((i) => Math.min(cards.length - 1, i + 1)); }} disabled={idx === cards.length - 1}>Next</Button>
+        <Button variant="outline" onClick={() => { setFlipped(false); setIdx((i) => Math.max(0, i - 1)); }} disabled={idx === 0}>{lang === 'si' ? 'පෙර' : 'Prev'}</Button>
+        <Button variant="ghost" onClick={() => setFlipped((f) => !f)}><RotateCcw className="mr-2 h-4 w-4" /> {lang === 'si' ? 'හරවන්න' : 'Flip'}</Button>
+        <Button onClick={() => { setFlipped(false); setIdx((i) => Math.min(cards.length - 1, i + 1)); }} disabled={idx === cards.length - 1}>{lang === 'si' ? 'ඊළඟ' : 'Next'}</Button>
       </div>
     </div>
   );
@@ -339,7 +339,7 @@ function QuizView({ documentId, lang }: { documentId: string; lang: Lang }) {
   }
 
   if (qs === null) return <Skeleton />;
-  if (qs.length === 0) return <PendingBox label="Generate a practice quiz." onGenerate={generate} loading={loading} />;
+  if (qs.length === 0) return <PendingBox label={lang === 'si' ? 'පුහුණු ප්‍රශ්නාවලියක් සාදන්න.' : 'Generate a practice quiz.'} onGenerate={generate} loading={loading} lang={lang} />;
   if (lang === "si" && qs.some((q) => !q.question_si)) return <p className="text-muted-foreground">Translating…</p>;
 
   const score = qs.filter((q) => answers[q.id] === q.correct_index).length;
@@ -355,12 +355,12 @@ function QuizView({ documentId, lang }: { documentId: string; lang: Lang }) {
     <div className={`space-y-6 ${lang === "si" ? "font-si" : ""}`}>
       {submitted && (
         <div className="rounded-2xl border border-primary/40 bg-card p-6 text-center shadow-sm">
-          <p className="text-sm font-medium text-muted-foreground">Your score</p>
+          <p className="text-sm font-medium text-muted-foreground">{lang === 'si' ? 'ඔබේ ලකුණු' : 'Your score'}</p>
           <p className="font-display text-5xl font-semibold text-foreground">
             <span className="text-primary">{score}</span>
             <span className="text-2xl text-muted-foreground">/{qs.length}</span>
           </p>
-          <Button variant="outline" className="mt-4" onClick={() => { setAnswers({}); setSubmitted(false); }}>Try again</Button>
+          <Button variant="outline" className="mt-4" onClick={() => { setAnswers({}); setSubmitted(false); }}>{lang === 'si' ? 'නැවත උත්සාහ කරන්න' : 'Try again'}</Button>
         </div>
       )}
       {qs.map((q, i) => {
@@ -392,7 +392,7 @@ function QuizView({ documentId, lang }: { documentId: string; lang: Lang }) {
             </div>
             {submitted && (
               <p className="mt-3 text-sm text-muted-foreground">
-                <strong>Why:</strong> {lang === "si" ? q.explanation_si : q.explanation_en}
+                <strong>{lang === 'si' ? 'ඇයි:' : 'Why:'}</strong> {lang === "si" ? q.explanation_si : q.explanation_en}
               </p>
             )}
           </div>
@@ -400,7 +400,7 @@ function QuizView({ documentId, lang }: { documentId: string; lang: Lang }) {
       })}
       {!submitted && (
         <Button onClick={submit} size="lg" className="w-full" disabled={Object.keys(answers).length < qs.length}>
-          Submit answers
+          {lang === 'si' ? 'පිළිතුරු ඉදිරිපත් කරන්න' : 'Submit answers'}
         </Button>
       )}
     </div>
@@ -470,7 +470,7 @@ function PomodoroButton() {
 }
 
 // ===== Chat with document =====
-function ChatView({ documentId }: { documentId: string }) {
+function ChatView({ documentId, lang }: { documentId: string; lang: Lang }) {
   const load = useServerFn(getChatHistory);
   const send = useServerFn(chatWithDocument);
   const [msgs, setMsgs] = useState<Array<{ id?: string; role: "user" | "assistant"; content: string }>>([]);
@@ -506,8 +506,8 @@ function ChatView({ documentId }: { documentId: string }) {
           <div className="grid h-full place-items-center text-center text-sm text-muted-foreground">
             <div>
               <MessageSquare className="mx-auto mb-2 h-8 w-8 text-primary/60" />
-              <p>Ask anything about this material.</p>
-              <p className="mt-1 text-xs">e.g. "Explain section 2 in simpler terms" or "Give me 3 sample exam questions".</p>
+              <p>{lang === 'si' ? 'මෙම කරුණු ගැන අසන්න.' : 'Ask anything about this material.'}</p>
+              <p className="mt-1 text-xs">{lang === 'si' ? 'උදා: "2 කොටස සරලව පැහැදිලි කරන්න"' : 'e.g. "Explain section 2 in simpler terms" or "Give me 3 sample exam questions".'}</p>
             </div>
           </div>
         )}
@@ -529,7 +529,7 @@ function ChatView({ documentId }: { documentId: string }) {
         {busy && (
           <div className="flex justify-start">
             <div className="rounded-2xl border border-border bg-card px-4 py-2.5 text-sm text-muted-foreground">
-              <Loader2 className="inline h-3 w-3 animate-spin" /> Thinking…
+              <Loader2 className="inline h-3 w-3 animate-spin" /> {lang === 'si' ? 'සිතමින්…' : 'Thinking…'}
             </div>
           </div>
         )}
@@ -539,7 +539,7 @@ function ChatView({ documentId }: { documentId: string }) {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about this document…"
+          placeholder={lang === 'si' ? 'මෙම ලේඛනය ගැන අසන්න…' : 'Ask about this document…'}
           disabled={busy}
           className="h-10 flex-1 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/60 disabled:opacity-60"
         />
@@ -739,7 +739,7 @@ function PaperRunner({ paperId, lang, onExit }: { paperId: string; lang: Lang; o
           <p className="text-xs text-muted-foreground">{questions.length} questions</p>
         </div>
         <div className="flex items-center gap-3 print:hidden">
-          <Button size="sm" variant="outline" onClick={() => downloadPDF("paper-content-export", `paper-${paperId.slice(0, 8)}.pdf`)} title="Download as PDF">
+          <Button size="sm" variant="outline" onClick={() => downloadPDF("paper-content-export", `paper-${paperId.slice(0, 8)}.pdf`)} title="{lang === 'si' ? 'PDF ලෙස බාගන්න' : 'Download as PDF'}">
             <Download className="mr-1.5 h-3.5 w-3.5" /> PDF
           </Button>
           <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold tabular-nums ${

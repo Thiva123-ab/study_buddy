@@ -524,7 +524,16 @@ export const translateToSinhala = createServerFn({ method: "POST" })
     if (summary && !summary.content_si) {
       const text = await generateAiText({
         model: gateway(MODEL),
-        prompt: `Translate the following English study summary into clear, natural Sinhala (සිංහල). Preserve markdown formatting. Return only the Sinhala translation.\n\n${summary.content_en}`,
+        prompt: `You are an expert English to Sinhala translator. Translate the following English study summary into clear, natural Sinhala (සිංහල). 
+
+CRITICAL INSTRUCTIONS:
+- You MUST translate the ENTIRE text into Sinhala.
+- Do NOT leave any English words unless they are technical terms that cannot be translated.
+- Preserve ALL markdown formatting exactly as it is (e.g. ## Headings, **bold**, - lists).
+- Output ONLY the translated Sinhala text.
+
+Text to translate:
+${summary.content_en}`,
       });
       await context.supabase.from("summaries").update({ content_si: text }).eq("id", summary.id);
     }
@@ -539,13 +548,17 @@ export const translateToSinhala = createServerFn({ method: "POST" })
       const text = await generateAiText({
         model: gateway(MODEL),
         responseMimeType: "application/json",
-        prompt: `Translate the text inside these flashcards from English to natural Sinhala. IMPORTANT: DO NOT translate the JSON keys (e.g., keep "cards", "front", "back" in English). Only translate the content strings.
+        prompt: `You are an expert English to Sinhala translator. Translate the text inside these flashcards from English to natural Sinhala. 
 
-Return ONLY valid JSON in this exact shape, with no markdown fences and no commentary:
+CRITICAL INSTRUCTIONS:
+- You MUST translate the content strings into Sinhala.
+- DO NOT translate the JSON keys (e.g., keep "cards", "front", "back" in English). Only translate the content strings.
+- Output ONLY the valid JSON exactly in this shape, with no markdown fences or commentary:
 {"cards":[{"front":"translated front","back":"translated back"}]}
 
 Return the same number of cards in order.
 
+JSON to translate:
 ${JSON.stringify({ cards: cards.map((c) => ({ front: c.front_en, back: c.back_en })) })}`,
       });
       const translated = parseAiJson(text, Sch).cards;
@@ -570,13 +583,17 @@ ${JSON.stringify({ cards: cards.map((c) => ({ front: c.front_en, back: c.back_en
       const text = await generateAiText({
         model: gateway(MODEL),
         responseMimeType: "application/json",
-        prompt: `Translate these quiz questions from English to natural Sinhala. IMPORTANT: DO NOT translate the JSON keys (e.g., keep "questions", "question", "options", "explanation" in English). Only translate the content strings.
+        prompt: `You are an expert English to Sinhala translator. Translate these quiz questions from English to natural Sinhala. 
 
-Return ONLY valid JSON in this exact shape, with no markdown fences and no commentary:
+CRITICAL INSTRUCTIONS:
+- DO NOT translate the JSON keys (e.g., keep "questions", "question", "options", "explanation" in English). 
+- You MUST translate all the content strings (the question text, the options, and the explanation) into Sinhala.
+- Return ONLY valid JSON exactly in this shape, with no markdown fences or commentary:
 {"questions":[{"question":"translated question","options":["A","B","C","D"],"explanation":"translated explanation"}]}
 
 Keep the same option order. Return the same number of questions in order.
 
+JSON to translate:
 ${JSON.stringify({ questions: qs.map((q) => ({ question: q.question_en, options: q.options_en, explanation: q.explanation_en })) })}`,
       });
       const translated = parseAiJson(text, Sch).questions;
@@ -598,7 +615,7 @@ ${JSON.stringify({ questions: qs.map((q) => ({ question: q.question_en, options:
         if (!p.title_si) {
           const text = await generateAiText({
             model: gateway(MODEL),
-            prompt: `Translate the following paper title into natural Sinhala (සිංහල). Return only the translation.\n\n${p.title}`,
+            prompt: `You are an expert English to Sinhala translator. Translate the following paper title into natural Sinhala (සිංහල). Return ONLY the translation, nothing else.\n\n${p.title}`,
           });
           await context.supabase.from("papers").update({ title_si: text }).eq("id", p.id);
         }
@@ -619,13 +636,18 @@ ${JSON.stringify({ questions: qs.map((q) => ({ question: q.question_en, options:
           const text = await generateAiText({
             model: gateway(MODEL),
             responseMimeType: "application/json",
-            prompt: `Translate these paper questions from English to natural Sinhala. IMPORTANT: DO NOT translate the JSON keys (e.g., keep "questions", "question", "options", "modelAnswer", "blanks" in English). Only translate the content strings inside. If a value is null or missing, keep it null.
-            
-Return ONLY valid JSON in this exact shape, with no markdown fences and no commentary:
+            prompt: `You are an expert English to Sinhala translator. Translate these paper questions from English to natural Sinhala. 
+
+CRITICAL INSTRUCTIONS:
+- DO NOT translate the JSON keys (e.g., keep "questions", "question", "options", "modelAnswer", "blanks" in English). 
+- You MUST translate all the content strings inside into Sinhala. 
+- If a value is null or missing, keep it null.
+- Return ONLY valid JSON exactly in this shape, with no markdown fences or commentary:
 {"questions":[{"question":"translated question","options":["A","B"],"modelAnswer":"translated answer","blanks":["translated blank"]}]}
 
 Keep the same order. Return the same number of questions in order.
 
+JSON to translate:
 ${JSON.stringify({ questions: pqs.map((q) => ({ question: q.question, options: q.options, modelAnswer: q.model_answer, blanks: q.blanks })) })}`,
           });
           
