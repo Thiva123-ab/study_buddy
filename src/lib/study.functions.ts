@@ -89,7 +89,16 @@ async function generateAiText(options: any): Promise<string> {
           lastError = new Error("You have exceeded the Gemini API rate limit (too many requests). Please wait a minute and try again.");
           continue; // Try the next key!
         }
-        throw new Error(`Gemini API error (${response.status}): ${errText}`);
+        
+        let displayError = errText;
+        try {
+          const parsed = JSON.parse(errText);
+          if (parsed?.error?.message) {
+            displayError = parsed.error.message;
+          }
+        } catch (e) {}
+
+        throw new Error(`Gemini API error (${response.status}): ${displayError}`);
       }
 
       const data = await response.json();

@@ -133,7 +133,7 @@ function DocumentPage() {
         <TabsContent value="summary" className="mt-6"><SummaryView documentId={id} lang={lang} /></TabsContent>
         <TabsContent value="flashcards" className="mt-6"><FlashcardsView documentId={id} lang={lang} /></TabsContent>
         <TabsContent value="quiz" className="mt-6"><QuizView documentId={id} lang={lang} /></TabsContent>
-        <TabsContent value="paper" className="mt-6"><PaperView documentId={id} /></TabsContent>
+        <TabsContent value="paper" className="mt-6"><PaperView documentId={id} lang={lang} /></TabsContent>
         <TabsContent value="chat" className="mt-6"><ChatView documentId={id} /></TabsContent>
       </Tabs>
     </main>
@@ -551,7 +551,7 @@ function ChatView({ documentId }: { documentId: string }) {
   );
 }
 // ===== Custom Papers =====
-function PaperView({ documentId }: { documentId: string }) {
+function PaperView({ documentId, lang }: { documentId: string; lang: Lang }) {
   const list = useServerFn(listPapers);
   const del = useServerFn(deletePaper);
   const [papers, setPapers] = useState<any[] | null>(null);
@@ -571,10 +571,10 @@ function PaperView({ documentId }: { documentId: string }) {
     refresh();
   }
 
-  if (activeId) return <PaperRunner paperId={activeId} onExit={() => { setActiveId(null); refresh(); }} />;
+  if (activeId) return <PaperRunner paperId={activeId} lang={lang} onExit={() => { setActiveId(null); refresh(); }} />;
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${lang === "si" ? "font-si" : ""}`}>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-display text-xl font-semibold">Practice papers</h2>
@@ -596,7 +596,7 @@ function PaperView({ documentId }: { documentId: string }) {
           {papers.map((p) => (
             <li key={p.id} className="flex items-center justify-between rounded-xl border border-border bg-card/60 p-4">
               <div>
-                <p className="font-medium">{p.title}</p>
+                <p className="font-medium">{lang === "si" && p.title_si ? p.title_si : p.title}</p>
                 <p className="text-xs text-muted-foreground">
                   <AlarmClock className="mr-1 inline h-3 w-3" /> {p.duration_minutes} min · {new Date(p.created_at).toLocaleDateString()}
                 </p>
@@ -687,7 +687,7 @@ function PaperBuilder({ documentId, onCreated }: { documentId: string; onCreated
   );
 }
 
-function PaperRunner({ paperId, onExit }: { paperId: string; onExit: () => void }) {
+function PaperRunner({ paperId, lang, onExit }: { paperId: string; lang: Lang; onExit: () => void }) {
   const load = useServerFn(getPaper);
   const [data, setData] = useState<{ paper: any; questions: any[] } | null>(null);
   const [answers, setAnswers] = useState<Record<string, any>>({});
@@ -732,10 +732,10 @@ function PaperRunner({ paperId, onExit }: { paperId: string; onExit: () => void 
   }
 
   return (
-    <div id="paper-content-export" className="space-y-4">
+    <div id="paper-content-export" className={`space-y-4 ${lang === "si" ? "font-si" : ""}`}>
       <div className="sticky top-2 z-10 flex items-center justify-between rounded-2xl border border-border bg-card/90 px-4 py-3 backdrop-blur">
         <div>
-          <p className="font-semibold">{paper.title}</p>
+          <p className="font-semibold">{lang === "si" && paper.title_si ? paper.title_si : paper.title}</p>
           <p className="text-xs text-muted-foreground">{questions.length} questions</p>
         </div>
         <div className="flex items-center gap-3 print:hidden">
@@ -765,7 +765,7 @@ function PaperRunner({ paperId, onExit }: { paperId: string; onExit: () => void 
       {questions.map((q, i) => (
         <div key={q.id} className="rounded-2xl border border-border bg-card/60 p-5">
           <div className="mb-3 flex items-start justify-between gap-3">
-            <p className="font-medium">{i + 1}. {q.question}</p>
+            <p className="font-medium">{i + 1}. {lang === "si" && q.question_si ? q.question_si : q.question}</p>
             <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
               {q.type.replace("_", " ")} · {q.marks}m
             </span>
@@ -773,7 +773,7 @@ function PaperRunner({ paperId, onExit }: { paperId: string; onExit: () => void 
 
           {q.type === "mcq" && (
             <div className="space-y-2">
-              {((q.options as string[]) ?? []).map((opt, oi) => {
+              {(((lang === "si" && q.options_si ? q.options_si : q.options) as string[]) ?? []).map((opt, oi) => {
                 const chosen = answers[q.id] === oi;
                 const isCorrect = q.correct_index === oi;
                 return (
@@ -795,7 +795,7 @@ function PaperRunner({ paperId, onExit }: { paperId: string; onExit: () => void 
 
           {q.type === "fill_blank" && (
             <div className="space-y-2">
-              {((q.blanks as string[]) ?? []).map((_, bi) => (
+              {(((lang === "si" && q.blanks_si ? q.blanks_si : q.blanks) as string[]) ?? []).map((_, bi) => (
                 <input key={bi} disabled={submitted}
                   value={(answers[q.id]?.[bi]) ?? ""}
                   onChange={(e) => setAnswers((a) => {
@@ -807,7 +807,7 @@ function PaperRunner({ paperId, onExit }: { paperId: string; onExit: () => void 
                   className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/60 disabled:opacity-70" />
               ))}
               {submitted && (
-                <p className="text-xs text-muted-foreground"><strong>Answers:</strong> {(q.blanks as string[]).join(" · ")}</p>
+                <p className="text-xs text-muted-foreground"><strong>Answers:</strong> {((lang === "si" && q.blanks_si ? q.blanks_si : q.blanks) as string[]).join(" · ")}</p>
               )}
             </div>
           )}
@@ -823,7 +823,7 @@ function PaperRunner({ paperId, onExit }: { paperId: string; onExit: () => void 
               {submitted && q.model_answer && (
                 <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
                   <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary">Model answer</p>
-                  <p className="text-muted-foreground">{q.model_answer}</p>
+                  <p className="text-muted-foreground">{lang === "si" && q.model_answer_si ? q.model_answer_si : q.model_answer}</p>
                 </div>
               )}
             </>
