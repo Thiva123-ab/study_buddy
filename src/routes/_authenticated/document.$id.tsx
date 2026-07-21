@@ -430,6 +430,28 @@ function PomodoroButton() {
       setSeconds((s) => {
         if (s <= 1) {
           setRunning(false);
+
+          // Play a simple chime sound
+          try {
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const playNote = (freq: number, start: number) => {
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.type = "sine";
+              osc.frequency.value = freq;
+              gain.gain.setValueAtTime(0, start);
+              gain.gain.linearRampToValueAtTime(0.3, start + 0.05);
+              gain.gain.exponentialRampToValueAtTime(0.01, start + 0.8);
+              osc.start(start);
+              osc.stop(start + 0.8);
+            };
+            playNote(659.25, ctx.currentTime); // E5
+            playNote(523.25, ctx.currentTime + 0.4); // C5
+            playNote(659.25, ctx.currentTime + 0.8); // E5 again
+          } catch (e) {}
+
           const next = mode === "focus" ? "break" : "focus";
           setMode(next);
           toast.success(mode === "focus" ? "Focus done — take a break!" : "Break over — back to focus!");
