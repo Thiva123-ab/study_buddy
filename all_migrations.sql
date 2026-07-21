@@ -209,13 +209,14 @@ CREATE TABLE public.user_credits (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-GRANT SELECT ON public.user_credits TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_credits TO authenticated;
 GRANT ALL ON public.user_credits TO service_role;
 ALTER TABLE public.user_credits ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users read own credits"
-  ON public.user_credits FOR SELECT
-  USING (auth.uid() = user_id);
+CREATE POLICY "Users manage own credits"
+  ON public.user_credits FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 -- Usage audit log
 CREATE TABLE public.credit_usage_log (
@@ -227,13 +228,14 @@ CREATE TABLE public.credit_usage_log (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-GRANT SELECT ON public.credit_usage_log TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.credit_usage_log TO authenticated;
 GRANT ALL ON public.credit_usage_log TO service_role;
 ALTER TABLE public.credit_usage_log ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users read own usage"
-  ON public.credit_usage_log FOR SELECT
-  USING (auth.uid() = user_id);
+CREATE POLICY "Users manage own usage"
+  ON public.credit_usage_log FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 -- Backfill credits for existing users
 INSERT INTO public.user_credits (user_id)
