@@ -2,9 +2,9 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText, Trash2, Trophy, Target, Flame, Sparkles, Search, Star, Layers } from "lucide-react";
+import { Plus, FileText, Trash2, Trophy, Target, Flame, Sparkles, Search, Star, Layers, Zap } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { deleteDocument, getSkillStats, toggleFavorite } from "@/lib/study.functions";
+import { deleteDocument, getSkillStats, toggleFavorite, getUserCreditsInfo } from "@/lib/study.functions";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -18,10 +18,12 @@ type Doc = { id: string; title: string; source_type: string; created_at: string;
 function Dashboard() {
   const [docs, setDocs] = useState<Doc[] | null>(null);
   const [stats, setStats] = useState<any>(null);
+  const [credits, setCredits] = useState<any>(null);
   const [query, setQuery] = useState("");
   const [favsOnly, setFavsOnly] = useState(false);
   const del = useServerFn(deleteDocument);
   const loadStats = useServerFn(getSkillStats);
+  const loadCredits = useServerFn(getUserCreditsInfo);
   const favFn = useServerFn(toggleFavorite);
   const router = useRouter();
 
@@ -32,6 +34,7 @@ function Dashboard() {
       .order("created_at", { ascending: false });
     setDocs((data ?? []) as Doc[]);
     try { setStats(await loadStats({})); } catch {}
+    try { setCredits(await loadCredits({})); } catch {}
   }
   useEffect(() => { load(); }, []);
 
@@ -72,8 +75,18 @@ function Dashboard() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="mb-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+          className="mb-10 grid gap-4 md:grid-cols-2 lg:grid-cols-5"
         >
+          {credits && (
+            <StatCard
+              icon={<Zap className="h-4 w-4" />}
+              label="Daily credits"
+              value={`${credits.creditsRemaining}/${credits.creditsTotal}`}
+              sub={`${credits.plan} plan · Resets at midnight`}
+              progress={(credits.creditsRemaining / credits.creditsTotal) * 100}
+              tone="blue"
+            />
+          )}
           <StatCard
             icon={<Sparkles className="h-4 w-4" />}
             label="Scholar level"
@@ -201,13 +214,14 @@ function Dashboard() {
 
 function StatCard({ icon, label, value, sub, progress, tone }: {
   icon: React.ReactNode; label: string; value: string; sub: string; progress: number;
-  tone: "violet" | "teal" | "amber" | "rose";
+  tone: "violet" | "teal" | "amber" | "rose" | "blue";
 }) {
   const tones: Record<string, { ring: string; bar: string; glow: string; text: string }> = {
     violet: { ring: "from-violet-400/40 to-fuchsia-400/10", bar: "bg-gradient-to-r from-violet-400 to-fuchsia-400", glow: "shadow-[0_0_40px_-12px_rgba(168,130,255,0.5)]", text: "text-violet-200" },
     teal:   { ring: "from-teal-300/40 to-cyan-300/10",     bar: "bg-gradient-to-r from-teal-300 to-cyan-300",     glow: "shadow-[0_0_40px_-12px_rgba(94,234,212,0.45)]", text: "text-teal-200" },
     amber:  { ring: "from-amber-300/40 to-orange-300/10",  bar: "bg-gradient-to-r from-amber-300 to-orange-300",  glow: "shadow-[0_0_40px_-12px_rgba(251,191,36,0.45)]", text: "text-amber-200" },
     rose:   { ring: "from-rose-300/40 to-pink-300/10",     bar: "bg-gradient-to-r from-rose-300 to-pink-300",     glow: "shadow-[0_0_40px_-12px_rgba(251,113,133,0.45)]", text: "text-rose-200" },
+    blue:   { ring: "from-blue-400/40 to-indigo-400/10",   bar: "bg-gradient-to-r from-blue-400 to-indigo-400",   glow: "shadow-[0_0_40px_-12px_rgba(96,165,250,0.5)]",  text: "text-blue-200" },
   };
   const t = tones[tone];
   return (
