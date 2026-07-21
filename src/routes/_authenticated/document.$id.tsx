@@ -663,33 +663,41 @@ function PaperBuilder({ documentId, onCreated }: { documentId: string; onCreated
 
   return (
     <div className="rounded-2xl border border-border bg-card/60 p-5 space-y-4">
-      <label className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium text-muted-foreground">Paper title</span>
-        <input value={title} onChange={(e) => setTitle(e.target.value)}
-          className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/60" />
-      </label>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <NumField label="Duration (min)" value={duration} onChange={setDuration} max={360} />
-        <NumField label="MCQ" value={mcq} onChange={setMcq} max={50} />
-        <NumField label="Fill blanks" value={fillBlank} onChange={setFillBlank} max={50} />
-        <NumField label="Short answer" value={shortQ} onChange={setShortQ} max={50} />
-        <NumField label="Essay" value={essay} onChange={setEssay} max={20} />
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-muted-foreground">Difficulty:</span>
-        {(["easy", "medium", "hard", "mixed"] as const).map((d) => (
-          <button key={d} onClick={() => setDifficulty(d)}
-            className={`rounded-full border px-3 py-1 text-xs capitalize transition ${
-              difficulty === d ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"
-            }`}>{d}</button>
-        ))}
-      </div>
-      <div className="flex items-center justify-between border-t border-border pt-3">
-        <p className="text-sm text-muted-foreground">{total} questions · {duration} min</p>
-        <Button onClick={submit} disabled={busy || total === 0}>
-          {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Generate paper
-        </Button>
-      </div>
+      {busy ? (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-8">
+          <GeneratingAnimation type="paper" />
+        </motion.div>
+      ) : (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Paper title</span>
+            <input value={title} onChange={(e) => setTitle(e.target.value)}
+              className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary/60" />
+          </label>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+            <NumField label="Duration (min)" value={duration} onChange={setDuration} max={360} />
+            <NumField label="MCQ" value={mcq} onChange={setMcq} max={50} />
+            <NumField label="Fill blanks" value={fillBlank} onChange={setFillBlank} max={50} />
+            <NumField label="Short answer" value={shortQ} onChange={setShortQ} max={50} />
+            <NumField label="Essay" value={essay} onChange={setEssay} max={20} />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Difficulty:</span>
+            {(["easy", "medium", "hard", "mixed"] as const).map((d) => (
+              <button key={d} onClick={() => setDifficulty(d)}
+                className={`rounded-full border px-3 py-1 text-xs capitalize transition ${
+                  difficulty === d ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"
+                }`}>{d}</button>
+            ))}
+          </div>
+          <div className="flex items-center justify-between border-t border-border pt-3">
+            <p className="text-sm text-muted-foreground">{total} questions · {duration} min</p>
+            <Button onClick={submit} disabled={total === 0}>
+              Generate paper
+            </Button>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }
