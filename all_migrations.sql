@@ -193,3 +193,39 @@ CREATE INDEX paper_questions_paper_idx ON public.paper_questions(paper_id, posit
 CREATE INDEX papers_doc_idx ON public.papers(document_id, created_at DESC);
 ALTER TABLE public.papers ALTER COLUMN document_id DROP NOT NULL;
 ALTER TABLE public.papers ADD COLUMN IF NOT EXISTS source_document_ids uuid[] NOT NULL DEFAULT '{}'::uuid[];
+
+-- Per-user credit balance
+CREATE TABLE public.user_credits (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  credits_remaining INT NOT NULL DEFAULT 20,
+  credits_total INT NOT NULL DEFAULT 20,
+  last_reset_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  plan TEXT NOT NULL DEFAULT 'free',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+GRANT SELECT ON public.user_credits TO authenticated;
+GRANT ALL ON public.user_credits TO service_role;
+ALTER TABLE public.user_credits ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users read own credits"
+  ON public.user_credits FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- Usage audit log
+CREATE TABLE public.credit_usage_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  action TEXT NOT NULL,
+  credits_used INT NOT NULL,
+  document_id UUID REFERENCES public.documents(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+GRANT SELECT ON public.credit_usage_log TO authenticated;
+GRANT ALL ON public.credit_usage_log TO service_role;
+ALTER TABLE public.credit_usage_log ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users read own usage"
+  ON public.credit_usage_log FOR SELECT
+  USING (auth.uid() = user_id);
