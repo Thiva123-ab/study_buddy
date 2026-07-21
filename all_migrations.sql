@@ -15,6 +15,11 @@ RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
   INSERT INTO public.profiles (id, display_name)
   VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'display_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)));
+
+  -- Auto-create credit balance for new user
+  INSERT INTO public.user_credits (user_id)
+  VALUES (NEW.id);
+
   RETURN NEW;
 END;
 $$;
@@ -229,3 +234,8 @@ ALTER TABLE public.credit_usage_log ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users read own usage"
   ON public.credit_usage_log FOR SELECT
   USING (auth.uid() = user_id);
+
+-- Backfill credits for existing users
+INSERT INTO public.user_credits (user_id)
+SELECT id FROM auth.users
+WHERE id NOT IN (SELECT user_id FROM public.user_credits);
