@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Plus, Trash2, AlarmClock, FileText, Check, X, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { GeneratingAnimation } from "@/components/generating-animation";
 
 export const Route = createFileRoute("/_authenticated/papers")({
   head: () => ({ meta: [{ title: "Multi-doc papers · LectureLens" }] }),
@@ -152,6 +153,15 @@ function MultiPaperBuilder({ docs, onCreated }: { docs: Doc[]; onCreated: (id: s
       onCreated((paper as any).id);
     } catch (e: any) { toast.error(e.message); }
     finally { setBusy(false); }
+  }
+
+  if (busy) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        className="rounded-2xl border border-border bg-card/60 p-6 py-12">
+        <GeneratingAnimation type="paper" />
+      </motion.div>
+    );
   }
 
   return (

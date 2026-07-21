@@ -14,6 +14,7 @@ import {
 import { Loader2, Languages, ArrowLeft, RotateCcw, Check, X, Download, Timer, Play, Pause, Send, MessageSquare, FileText, Trash2, Plus, AlarmClock } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { GeneratingAnimation } from "@/components/generating-animation";
 
 export const Route = createFileRoute("/_authenticated/document/$id")({
   head: () => ({ meta: [{ title: "Study set · LectureLens" }] }),
@@ -140,12 +141,18 @@ function DocumentPage() {
   );
 }
 
-function PendingBox({ label, onGenerate, loading, lang }: { label: string; onGenerate: () => void; loading: boolean; lang?: Lang }) {
+function PendingBox({ label, onGenerate, loading, lang, type }: { label: string; onGenerate: () => void; loading: boolean; lang?: Lang; type: "summary" | "quiz" | "flashcards" | "paper" }) {
+  if (loading) {
+    return (
+      <div className="grid place-items-center rounded-2xl border border-dashed border-border bg-card/40 py-8">
+        <GeneratingAnimation type={type} />
+      </div>
+    );
+  }
   return (
     <div className="grid place-items-center rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
       <p className="text-muted-foreground">{label}</p>
       <Button onClick={onGenerate} disabled={loading} className="mt-4">
-        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         {lang === 'si' ? 'දැන් සාදන්න' : 'Generate now'}
       </Button>
     </div>
@@ -209,7 +216,7 @@ function SummaryView({ documentId, lang }: { documentId: string; lang: Lang }) {
   }
 
   if (!loaded) return <Skeleton />;
-  if (!row) return <PendingBox label={lang === 'si' ? 'මෙම කරුණු වල සාරාංශයක් සාදන්න.' : 'Generate a summary of this material.'} onGenerate={generate} loading={loading} lang={lang} />;
+  if (!row) return <PendingBox type="summary" label={lang === 'si' ? 'මෙම කරුණු වල සාරාංශයක් සාදන්න.' : 'Generate a summary of this material.'} onGenerate={generate} loading={loading} lang={lang} />;
 
   const content = lang === "si" ? row.content_si : row.content_en;
   if (lang === "si" && !content) return <p className="text-muted-foreground">Translating…</p>;
@@ -283,7 +290,7 @@ function FlashcardsView({ documentId, lang }: { documentId: string; lang: Lang }
   }
 
   if (cards === null) return <Skeleton />;
-  if (cards.length === 0) return <PendingBox label={lang === 'si' ? 'මෙම කරුණු වලින් ෆ්ලෑෂ් කාඩ් සාදන්න.' : 'Generate flashcards from this material.'} onGenerate={generate} loading={loading} lang={lang} />;
+  if (cards.length === 0) return <PendingBox type="flashcards" label={lang === 'si' ? 'මෙම කරුණු වලින් ෆ්ලෑෂ් කාඩ් සාදන්න.' : 'Generate flashcards from this material.'} onGenerate={generate} loading={loading} lang={lang} />;
 
   const c = cards[idx];
   const front = lang === "si" ? c.front_si : c.front_en;
@@ -339,7 +346,7 @@ function QuizView({ documentId, lang }: { documentId: string; lang: Lang }) {
   }
 
   if (qs === null) return <Skeleton />;
-  if (qs.length === 0) return <PendingBox label={lang === 'si' ? 'පුහුණු ප්‍රශ්නාවලියක් සාදන්න.' : 'Generate a practice quiz.'} onGenerate={generate} loading={loading} lang={lang} />;
+  if (qs.length === 0) return <PendingBox type="quiz" label={lang === 'si' ? 'පුහුණු ප්‍රශ්නාවලියක් සාදන්න.' : 'Generate a practice quiz.'} onGenerate={generate} loading={loading} lang={lang} />;
   if (lang === "si" && qs.some((q) => !q.question_si)) return <p className="text-muted-foreground">Translating…</p>;
 
   const score = qs.filter((q) => answers[q.id] === q.correct_index).length;
