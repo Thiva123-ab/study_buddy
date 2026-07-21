@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Search, PenTool, Sparkles, BrainCircuit, Target, CheckCircle, Scan, Lightbulb, Layers, ListOrdered, Scale, LayoutList } from "lucide-react";
+import { BookOpen, Search, PenTool, Sparkles, BrainCircuit, Target, CheckCircle, Scan, Lightbulb, Layers, ListOrdered, Scale, LayoutList, Upload } from "lucide-react";
 
 // Need to define FileText locally since we can't import from lucide-react with the exact name if it conflicts, but we can just import FileText
 import { FileText } from "lucide-react";
@@ -30,6 +30,12 @@ const GENERATION_STAGES = {
     { text: "Drafting questions...", icon: <PenTool className="h-6 w-6" /> },
     { text: "Balancing marks...", icon: <Scale className="h-6 w-6" /> },
     { text: "Formatting paper...", icon: <LayoutList className="h-6 w-6" /> },
+  ],
+  upload: [
+    { text: "Uploading file...", icon: <Upload className="h-6 w-6" /> },
+    { text: "Extracting text...", icon: <FileTextIcon className="h-6 w-6" /> },
+    { text: "Analyzing content...", icon: <BrainCircuit className="h-6 w-6" /> },
+    { text: "Finalizing study set...", icon: <CheckCircle className="h-6 w-6" /> },
   ]
 };
 
