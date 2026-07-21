@@ -98,7 +98,7 @@ function DocumentPage() {
     if (lang === "en") {
       setTranslating(true);
       try { await translate({ data: { documentId: id } }); setLang("si"); }
-      catch (e: any) { if (e.message?.includes("credits")) { toast.error(e.message, { description: "Your daily credits reset at midnight UTC.", duration: 6000 }); } else { toast.error(e.message); } }
+      catch (e: any) { if (e.message?.includes("credits")) { toast("Out of credits", { description: e.message.replace(" Your daily credits reset at midnight UTC.", ""), icon: "⚡", duration: 6000 }); } else { toast.error(e.message); } }
       finally { setTranslating(false); }
     } else setLang("en");
   }
@@ -211,7 +211,7 @@ function SummaryView({ documentId, lang }: { documentId: string; lang: Lang }) {
   async function generate() {
     setLoading(true);
     try { const r = await gen({ data: { documentId } }); setRow(r); }
-    catch (e: any) { if (e.message?.includes("credits")) { toast.error(e.message, { description: "Your daily credits reset at midnight UTC.", duration: 6000 }); } else { toast.error(e.message); } }
+    catch (e: any) { if (e.message?.includes("credits")) { toast("Out of credits", { description: e.message.replace(" Your daily credits reset at midnight UTC.", ""), icon: "⚡", duration: 6000 }); } else { toast.error(e.message); } }
     finally { setLoading(false); }
   }
 
@@ -285,7 +285,7 @@ function FlashcardsView({ documentId, lang }: { documentId: string; lang: Lang }
   async function generate() {
     setLoading(true);
     try { const r = await gen({ data: { documentId } }); setCards(r); }
-    catch (e: any) { if (e.message?.includes("credits")) { toast.error(e.message, { description: "Your daily credits reset at midnight UTC.", duration: 6000 }); } else { toast.error(e.message); } }
+    catch (e: any) { if (e.message?.includes("credits")) { toast("Out of credits", { description: e.message.replace(" Your daily credits reset at midnight UTC.", ""), icon: "⚡", duration: 6000 }); } else { toast.error(e.message); } }
     finally { setLoading(false); }
   }
 
@@ -341,7 +341,7 @@ function QuizView({ documentId, lang }: { documentId: string; lang: Lang }) {
   async function generate() {
     setLoading(true);
     try { const r = await gen({ data: { documentId } }); setQs(r); }
-    catch (e: any) { if (e.message?.includes("credits")) { toast.error(e.message, { description: "Your daily credits reset at midnight UTC.", duration: 6000 }); } else { toast.error(e.message); } }
+    catch (e: any) { if (e.message?.includes("credits")) { toast("Out of credits", { description: e.message.replace(" Your daily credits reset at midnight UTC.", ""), icon: "⚡", duration: 6000 }); } else { toast.error(e.message); } }
     finally { setLoading(false); }
   }
 
@@ -355,7 +355,7 @@ function QuizView({ documentId, lang }: { documentId: string; lang: Lang }) {
     setSubmitted(true);
     const wrongIds = qs!.filter((q) => answers[q.id] !== q.correct_index).map((q) => q.id);
     try { await record({ data: { documentId, score, total: qs!.length, wrongIds } }); }
-    catch (e: any) { if (e.message?.includes("credits")) { toast.error(e.message, { description: "Your daily credits reset at midnight UTC.", duration: 6000 }); } else { toast.error(e.message); } }
+    catch (e: any) { if (e.message?.includes("credits")) { toast("Out of credits", { description: e.message.replace(" Your daily credits reset at midnight UTC.", ""), icon: "⚡", duration: 6000 }); } else { toast.error(e.message); } }
   }
 
   return (
@@ -657,7 +657,7 @@ function PaperBuilder({ documentId, onCreated }: { documentId: string; onCreated
       } });
       toast.success("Paper ready!");
       onCreated((paper as any).id);
-    } catch (e: any) { if (e.message?.includes("credits")) { toast.error(e.message, { description: "Your daily credits reset at midnight UTC.", duration: 6000 }); } else { toast.error(e.message); } }
+    } catch (e: any) { if (e.message?.includes("credits")) { toast("Out of credits", { description: e.message.replace(" Your daily credits reset at midnight UTC.", ""), icon: "⚡", duration: 6000 }); } else { toast.error(e.message); } }
     finally { setBusy(false); }
   }
 
