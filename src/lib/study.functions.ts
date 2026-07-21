@@ -286,6 +286,10 @@ export const createDocumentFromFile = createServerFn({ method: "POST" })
     return { file, title: typeof title === "string" && title ? title : file.name };
   })
   .handler(async ({ data, context }) => {
+    if (data.file.type.startsWith("image/")) {
+      const { checkAndDeductCredits } = await import("./credit.server");
+      await checkAndDeductCredits(context.supabase, context.userId, "image_extract");
+    }
     const bytes = new Uint8Array(await data.file.arrayBuffer());
     const text = await extractFromFile(data.file, bytes);
     if (!text || text.trim().length < 10) {
@@ -323,6 +327,9 @@ export const generateSummary = createServerFn({ method: "POST" })
     const { data: existing } = await context.supabase
       .from("summaries").select("*").eq("document_id", data.documentId).maybeSingle();
     if (existing) return existing;
+
+    const { checkAndDeductCredits } = await import("./credit.server");
+    await checkAndDeductCredits(context.supabase, context.userId, "generate_summary", data.documentId);
 
     const { data: doc, error: dErr } = await context.supabase
       .from("documents").select("extracted_text, title").eq("id", data.documentId).single();
@@ -385,6 +392,9 @@ export const generateFlashcards = createServerFn({ method: "POST" })
     const { data: existing } = await context.supabase
       .from("flashcards").select("*").eq("document_id", data.documentId).order("position");
     if (existing && existing.length > 0) return existing;
+
+    const { checkAndDeductCredits } = await import("./credit.server");
+    await checkAndDeductCredits(context.supabase, context.userId, "generate_flashcards", data.documentId);
 
     const { data: doc } = await context.supabase
       .from("documents").select("extracted_text, title").eq("id", data.documentId).single();
@@ -455,6 +465,9 @@ export const generateQuiz = createServerFn({ method: "POST" })
       .from("quiz_questions").select("*").eq("document_id", data.documentId).order("position");
     if (existing && existing.length > 0) return existing;
 
+    const { checkAndDeductCredits } = await import("./credit.server");
+    await checkAndDeductCredits(context.supabase, context.userId, "generate_quiz", data.documentId);
+
     const { data: doc } = await context.supabase
       .from("documents").select("extracted_text, title").eq("id", data.documentId).single();
     if (!doc) throw new Error("Document not found");
@@ -515,6 +528,9 @@ export const translateToSinhala = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ documentId: z.string().uuid() }).parse)
   .handler(async ({ data, context }) => {
+    const { checkAndDeductCredits } = await import("./credit.server");
+    await checkAndDeductCredits(context.supabase, context.userId, "translate", data.documentId);
+
     const { getGateway } = await import("./ai-gateway.server");
     const gateway = getGateway();
 
@@ -732,6 +748,9 @@ export const generatePaper = createServerFn({ method: "POST" })
     }).parse,
   )
   .handler(async ({ data, context }) => {
+    const { checkAndDeductCredits } = await import("./credit.server");
+    await checkAndDeductCredits(context.supabase, context.userId, "generate_paper", data.documentId);
+
     if (data.mcqCount + data.essayCount + data.fillBlankCount + data.shortCount === 0) {
       throw new Error("Add at least one question to the paper.");
     }
@@ -863,6 +882,9 @@ export const generateMultiPaper = createServerFn({ method: "POST" })
     }).parse,
   )
   .handler(async ({ data, context }) => {
+    const { checkAndDeductCredits } = await import("./credit.server");
+    await checkAndDeductCredits(context.supabase, context.userId, "generate_multi_paper");
+
     if (data.mcqCount + data.essayCount + data.fillBlankCount + data.shortCount === 0) {
       throw new Error("Add at least one question to the paper.");
     }
@@ -1084,6 +1106,9 @@ export const chatWithDocument = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(10);
     const recent = (history ?? []).reverse();
+
+    const { checkAndDeductCredits } = await import("./credit.server");
+    await checkAndDeductCredits(context.supabase, context.userId, "chat", data.documentId);
 
     const { getGateway } = await import("./ai-gateway.server");
     const reply = await generateAiText({
