@@ -9,6 +9,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { createDocumentFromText, createDocumentFromFile } from "@/lib/study.functions";
 import { Upload, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { GeneratingAnimation } from "@/components/generating-animation";
+import { motion } from "framer-motion";
 
 export const Route = createFileRoute("/_authenticated/upload")({
   head: () => ({ meta: [{ title: "New study set · LectureLens" }] }),
@@ -51,39 +53,45 @@ function UploadPage() {
       <h1 className="font-display text-4xl font-semibold">New study set</h1>
       <p className="mt-1 text-muted-foreground">Upload lecture material or paste notes — we'll do the rest.</p>
 
-      <div className="mt-8 rounded-2xl border border-border bg-card p-6">
-        <div className="mb-6">
-          <Label htmlFor="title">Title (optional)</Label>
-          <Input id="title" placeholder="e.g. Chapter 4 — Cell Biology" value={title} onChange={(e) => setTitle(e.target.value)} />
-        </div>
+      <div className="mt-8 rounded-2xl border border-border bg-card p-6 min-h-[400px]">
+        {loading ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-12">
+            <GeneratingAnimation type="upload" />
+          </motion.div>
+        ) : (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <div className="mb-6">
+              <Label htmlFor="title">Title (optional)</Label>
+              <Input id="title" placeholder="e.g. Chapter 4 — Cell Biology" value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
 
-        <Tabs defaultValue="file">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="file"><Upload className="mr-2 h-4 w-4" /> Upload file</TabsTrigger>
-            <TabsTrigger value="text"><FileText className="mr-2 h-4 w-4" /> Paste text</TabsTrigger>
-          </TabsList>
+            <Tabs defaultValue="file">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="file"><Upload className="mr-2 h-4 w-4" /> Upload file</TabsTrigger>
+                <TabsTrigger value="text"><FileText className="mr-2 h-4 w-4" /> Paste text</TabsTrigger>
+              </TabsList>
 
-          <TabsContent value="file" className="mt-6 space-y-4">
-            <label className="block cursor-pointer rounded-xl border-2 border-dashed border-border bg-background/40 p-10 text-center transition hover:border-primary/60 hover:bg-background/60">
-              <input type="file" accept=".pdf,.docx,image/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-              <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
-              <p className="mt-3 font-medium">{file ? file.name : "Click to choose a file"}</p>
-              <p className="mt-1 text-xs text-muted-foreground">PDF, DOCX, or image · max 10MB</p>
-            </label>
-            <Button onClick={submitFile} disabled={loading || !file} className="w-full" size="lg">
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {loading ? "Extracting…" : "Create study set"}
-            </Button>
-          </TabsContent>
+              <TabsContent value="file" className="mt-6 space-y-4">
+                <label className="block cursor-pointer rounded-xl border-2 border-dashed border-border bg-background/40 p-10 text-center transition hover:border-primary/60 hover:bg-background/60">
+                  <input type="file" accept=".pdf,.docx,image/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+                  <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
+                  <p className="mt-3 font-medium">{file ? file.name : "Click to choose a file"}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">PDF, DOCX, or image · max 10MB</p>
+                </label>
+                <Button onClick={submitFile} disabled={!file} className="w-full" size="lg">
+                  Create study set
+                </Button>
+              </TabsContent>
 
-          <TabsContent value="text" className="mt-6 space-y-4">
-            <Textarea rows={12} placeholder="Paste your notes here…" value={text} onChange={(e) => setText(e.target.value)} />
-            <Button onClick={submitText} disabled={loading} className="w-full" size="lg">
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {loading ? "Creating…" : "Create study set"}
-            </Button>
-          </TabsContent>
-        </Tabs>
+              <TabsContent value="text" className="mt-6 space-y-4">
+                <Textarea rows={12} placeholder="Paste your notes here…" value={text} onChange={(e) => setText(e.target.value)} />
+                <Button onClick={submitText} className="w-full" size="lg">
+                  Create study set
+                </Button>
+              </TabsContent>
+            </Tabs>
+          </motion.div>
+        )}
       </div>
     </main>
   );
