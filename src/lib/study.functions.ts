@@ -1161,3 +1161,11 @@ export const getWeakTopics = createServerFn({ method: "POST" })
       .map((q) => ({ ...q, misses: counts.get(q.id) ?? 0 }))
       .sort((a, b) => b.misses - a.misses);
   });
+
+// === Credits ===
+export const getUserCreditsInfo = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { getUserCredits } = await import("./credit.server");
+    return getUserCredits(context.supabase, context.userId);
+  });
