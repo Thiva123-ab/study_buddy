@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, Languages, ArrowLeft, RotateCcw, Check, X, Download, Timer, Play, Pause, Send, MessageSquare, FileText, Trash2, Plus, AlarmClock } from "lucide-react";
+import { Loader2, Languages, ArrowLeft, RotateCcw, Check, X, Download, Timer, Play, Pause, Send, MessageSquare, FileText, Trash2, Plus, Minus, AlarmClock } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { GeneratingAnimation } from "@/components/generating-animation";
@@ -417,6 +417,8 @@ function QuizView({ documentId, lang }: { documentId: string; lang: Lang }) {
 // ===== Pomodoro Timer =====
 function PomodoroButton() {
   const [open, setOpen] = useState(false);
+  const [focusMins, setFocusMins] = useState(25);
+  const [breakMins, setBreakMins] = useState(5);
   const [seconds, setSeconds] = useState(25 * 60);
   const [running, setRunning] = useState(false);
   const [mode, setMode] = useState<"focus" | "break">("focus");
@@ -430,18 +432,27 @@ function PomodoroButton() {
           setRunning(false);
           const next = mode === "focus" ? "break" : "focus";
           setMode(next);
-          toast.success(mode === "focus" ? "Focus done — take a 5 min break!" : "Break over — back to focus!");
-          return next === "focus" ? 25 * 60 : 5 * 60;
+          toast.success(mode === "focus" ? "Focus done — take a break!" : "Break over — back to focus!");
+          return next === "focus" ? focusMins * 60 : breakMins * 60;
         }
         return s - 1;
       });
     }, 1000);
     return () => { if (ref.current) clearInterval(ref.current); };
-  }, [running, mode]);
+  }, [running, mode, focusMins, breakMins]);
 
-  function reset() { setRunning(false); setSeconds(mode === "focus" ? 25 * 60 : 5 * 60); }
+  function reset() { setRunning(false); setSeconds(mode === "focus" ? focusMins * 60 : breakMins * 60); }
   const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
   const ss = String(seconds % 60).padStart(2, "0");
+
+  function adjustTime(delta: number) {
+    if (running) return;
+    const currentMins = Math.floor(seconds / 60);
+    const newMins = Math.max(1, currentMins + delta); // minimum 1 min
+    if (mode === "focus") setFocusMins(newMins);
+    else setBreakMins(newMins);
+    setSeconds(newMins * 60);
+  }
 
   return (
     <>
@@ -463,7 +474,23 @@ function PomodoroButton() {
             <span className="font-semibold uppercase tracking-wider text-muted-foreground">{mode === "focus" ? "Focus" : "Break"}</span>
             <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
           </div>
-          <p className="my-3 text-center font-display text-5xl font-semibold tabular-nums text-primary">{mm}:{ss}</p>
+          <div className="my-4 flex items-center justify-center gap-4">
+            <button 
+              onClick={() => adjustTime(-5)} 
+              disabled={running || Math.floor(seconds / 60) <= 5}
+              className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+            >
+              <Minus className="h-5 w-5" />
+            </button>
+            <p className="font-display text-5xl font-semibold tabular-nums text-primary w-[110px] text-center">{mm}:{ss}</p>
+            <button 
+              onClick={() => adjustTime(5)} 
+              disabled={running || Math.floor(seconds / 60) >= 120}
+              className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+          </div>
           <div className="flex items-center justify-center gap-2">
             <Button size="sm" onClick={() => setRunning((r) => !r)}>
               {running ? <><Pause className="mr-1 h-3 w-3" /> Pause</> : <><Play className="mr-1 h-3 w-3" /> Start</>}
