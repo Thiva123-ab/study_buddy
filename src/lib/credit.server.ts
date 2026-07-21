@@ -57,7 +57,7 @@ export async function checkAndDeductCredits(
       .insert({ user_id: userId, credits_remaining: 20, credits_total: 20 })
       .select("*")
       .single();
-    if (insertErr) throw new Error("Failed to initialize user credits");
+    if (insertErr) throw new Error(`Failed to initialize user credits: ${insertErr.message} (Code: ${insertErr.code})`);
     credits = newRow;
   }
 
@@ -92,7 +92,7 @@ export async function checkAndDeductCredits(
     .update({ credits_remaining: remaining })
     .eq("user_id", userId);
 
-  if (updateErr) throw new Error("Failed to update credit balance");
+  if (updateErr) throw new Error(`Failed to update credit balance: ${updateErr.message} (Code: ${updateErr.code})`);
 
   // 5. Log usage
   await supabase.from("credit_usage_log").insert({
