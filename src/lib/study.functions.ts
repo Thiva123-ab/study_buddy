@@ -778,7 +778,7 @@ export const generatePaper = createServerFn({ method: "POST" })
               properties: {
                 type: { type: "STRING" },
                 question: { type: "STRING" },
-                options: { type: "ARRAY", items: { type: "STRING" } },
+                options: { type: "ARRAY", minItems: 4, maxItems: 4, items: { type: "STRING" } },
                 correctIndex: { type: "INTEGER" },
                 modelAnswer: { type: "STRING" },
                 blanks: { type: "ARRAY", items: { type: "STRING" } },
@@ -797,8 +797,16 @@ ${breakdown.join("\n")}
 
 Difficulty: ${data.difficulty}. Cover the most important topics; spread questions across all sections of the material. Assign reasonable "marks" per question (MCQ 1, fill_blank 1-2, short 3-5, essay 8-15).
 
+CRITICAL RULES FOR MCQ QUESTIONS:
+- Each MCQ MUST have EXACTLY 4 options in the "options" array — no more, no less.
+- Each option must be a complete, meaningful answer choice (e.g. "10", "Binary Search Tree", "O(n log n)").
+- Do NOT split individual numbers, characters, or words from the question into separate options.
+- Example of CORRECT options: ["10", "5", "20", "7"]
+- Example of WRONG options: ["1", "0", ",", "5", "2", "1", "7"] — NEVER do this.
+- "correctIndex" must be 0, 1, 2, or 3 corresponding to the correct option.
+
 Return ONLY valid JSON in this exact shape, no markdown fences, no commentary:
-{"questions":[{"type":"mcq|essay|fill_blank|short","question":"...","options":["A","B","C","D"],"correctIndex":0,"modelAnswer":"...","blanks":["..."],"marks":1}]}
+{"questions":[{"type":"mcq|essay|fill_blank|short","question":"...","options":["Option A text","Option B text","Option C text","Option D text"],"correctIndex":0,"modelAnswer":"...","blanks":["..."],"marks":1}]}
 
 Order the questions: MCQ first, then fill_blank, then short, then essay.
 
@@ -807,6 +815,26 @@ Material titled "${doc.title}":
 ${doc.extracted_text}`,
     });
     const parsed = parseAiJson(text, PaperGenSchema);
+
+    // Post-parse validation: fix MCQ questions with wrong number of options
+    for (const q of parsed.questions) {
+      if (q.type === "mcq") {
+        if (!q.options || q.options.length !== 4) {
+          // If there are more than 4 options, take first 4; if fewer, pad with placeholder
+          const opts = q.options ?? [];
+          if (opts.length > 4) {
+            q.options = opts.slice(0, 4);
+          } else {
+            while (opts.length < 4) opts.push(`Option ${opts.length + 1}`);
+            q.options = opts;
+          }
+          // Ensure correctIndex is valid
+          if (typeof q.correctIndex !== "number" || q.correctIndex < 0 || q.correctIndex > 3) {
+            q.correctIndex = 0;
+          }
+        }
+      }
+    }
 
     const { data: paper, error: pErr } = await context.supabase
       .from("papers").insert({
