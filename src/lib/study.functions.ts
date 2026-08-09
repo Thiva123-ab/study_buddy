@@ -768,28 +768,6 @@ export const generatePaper = createServerFn({ method: "POST" })
     const text = await generateAiText({
       model: getGateway()(MODEL),
       responseMimeType: "application/json",
-      responseSchema: {
-        type: "OBJECT",
-        properties: {
-          questions: {
-            type: "ARRAY",
-            items: {
-              type: "OBJECT",
-              properties: {
-                type: { type: "STRING" },
-                question: { type: "STRING" },
-                options: { type: "ARRAY", minItems: 4, maxItems: 4, items: { type: "STRING" } },
-                correctIndex: { type: "INTEGER" },
-                modelAnswer: { type: "STRING" },
-                blanks: { type: "ARRAY", items: { type: "STRING" } },
-                marks: { type: "INTEGER" }
-              },
-              required: ["type", "question"]
-            }
-          }
-        },
-        required: ["questions"]
-      },
       prompt: `You are an expert exam-paper writer. Build a high-quality practice exam paper from the material below.
 
 Generate EXACTLY:
