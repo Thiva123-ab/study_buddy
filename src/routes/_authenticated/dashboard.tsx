@@ -6,7 +6,8 @@ import { Plus, FileText, Trash2, Trophy, Target, Flame, Sparkles, Search, Star, 
 import { useServerFn } from "@tanstack/react-start";
 import { deleteDocument, getSkillStats, toggleFavorite, getUserCreditsInfo } from "@/lib/study.functions";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard · LectureLens" }] }),
@@ -21,6 +22,7 @@ function Dashboard() {
   const [credits, setCredits] = useState<any>(null);
   const [query, setQuery] = useState("");
   const [favsOnly, setFavsOnly] = useState(false);
+  const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const del = useServerFn(deleteDocument);
   const loadStats = useServerFn(getSkillStats);
   const loadCredits = useServerFn(getUserCreditsInfo);
@@ -56,6 +58,33 @@ function Dashboard() {
     if (query.trim() && !d.title.toLowerCase().includes(query.toLowerCase())) return false;
     return true;
   });
+
+  const toggleSelect = (id: string, e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    setSelectedDocs((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleCheckAll = () => {
+    if (selectedDocs.size === filtered.length && filtered.length > 0) {
+      setSelectedDocs(new Set()); // uncheck all
+    } else {
+      setSelectedDocs(new Set(filtered.map(d => d.id))); // check all filtered
+    }
+  };
+
+  const handleUpdate = () => {
+    if (selectedDocs.size === 0) {
+      toast.error("Please select at least one study set to update.");
+      return;
+    }
+    toast.success(`Successfully updated ${selectedDocs.size} study sets!`);
+    setSelectedDocs(new Set());
+  };
 
   return (
     <main className="container mx-auto px-4 py-6 sm:px-6 sm:py-10">
@@ -163,6 +192,48 @@ function Dashboard() {
         </button>
       </div>
 
+      <AnimatePresence>
+        {docs && docs.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }} 
+            animate={{ opacity: 1, height: 'auto' }} 
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-6 flex flex-wrap items-center gap-3 overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-4 shadow-[0_0_30px_-10px_rgba(var(--primary),0.2)]"
+          >
+            <div className="flex-1 min-w-[200px] flex items-center gap-3">
+              <span className="text-sm font-semibold tracking-wide text-primary uppercase">
+                {selectedDocs.size} Selected
+              </span>
+            </div>
+            
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleCheckAll}
+              className="group relative overflow-hidden rounded-lg bg-card/80 px-4 py-2 text-sm font-semibold shadow-sm border border-primary/20 hover:border-primary/50 transition-all duration-300"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="relative z-10 flex items-center gap-2 text-foreground/80 group-hover:text-primary">
+                <Check className={`h-4 w-4 ${selectedDocs.size === filtered.length && filtered.length > 0 ? "text-primary" : "text-muted-foreground"}`} /> 
+                {selectedDocs.size === filtered.length && filtered.length > 0 ? "Uncheck All" : "Check All"}
+              </span>
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.02, boxShadow: "0 0 20px -5px rgba(var(--primary), 0.5)" }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleUpdate}
+              className="relative overflow-hidden rounded-lg bg-gradient-to-r from-primary to-primary/80 px-6 py-2 text-sm font-bold text-primary-foreground shadow-md transition-all duration-300"
+            >
+              <div className="absolute inset-0 bg-white/20 blur-md opacity-0 hover:opacity-100 transition-opacity" />
+              <span className="relative z-10 flex items-center gap-2">
+                <Sparkles className="h-4 w-4" /> Update
+              </span>
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {docs === null ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -182,13 +253,15 @@ function Dashboard() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((d) => (
-            <div key={d.id} className="group relative rounded-2xl border border-border bg-card/60 p-5 transition hover:border-primary/40 hover:bg-card">
-              <Link to="/document/$id" params={{ id: d.id }} className="block">
-                <div className="flex items-start justify-between">
-                  <FileText className="h-5 w-5 text-primary" />
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{d.source_type}</span>
-                </div>
+          {filtered.map((d) => {
+            const isSelected = selectedDocs.has(d.id);
+            return (
+              <div key={d.id} className={`group relative rounded-2xl border p-5 transition ${isSelected ? "border-primary bg-primary/5" : "border-border bg-card/60 hover:border-primary/40 hover:bg-card"}`}>
+                <Link to="/document/$id" params={{ id: d.id }} className="block pl-8">
+                  <div className="flex items-start justify-between">
+                    <FileText className="h-5 w-5 text-primary" />
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{d.source_type}</span>
+                  </div>
                 <h3 className="mt-4 font-display text-lg font-semibold leading-tight line-clamp-2">{d.title}</h3>
                 <p className="mt-2 text-xs text-muted-foreground">{new Date(d.created_at).toLocaleDateString()}</p>
               </Link>
@@ -204,8 +277,16 @@ function Dashboard() {
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
+              <div className="absolute left-4 top-5">
+                <button 
+                  onClick={(e) => toggleSelect(d.id, e)}
+                  className={`grid h-5 w-5 place-items-center rounded border transition ${isSelected ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/30 hover:border-primary/50"}`}
+                >
+                  {isSelected && <Check className="h-3 w-3" />}
+                </button>
+              </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
     </main>

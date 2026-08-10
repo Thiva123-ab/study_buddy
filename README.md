@@ -1,4 +1,4 @@
-﻿# 📚 LectureLens
+# 📚 LectureLens
 
 > **Bilingual AI study assistant** — Turn lecture slides and notes into summaries, flashcards, quizzes, and exam papers in English and Sinhala.
 
@@ -157,8 +157,6 @@ npm run dev
 # or
 bun dev
 ```
-
-Open http://localhost:3000
 
 ### 4 · Build for production
 

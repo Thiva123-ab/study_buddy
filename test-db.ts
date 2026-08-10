@@ -24,7 +24,7 @@ async function test() {
     }
   } else {
     console.log("✅ SUCCESS! The database is connected and the tables are properly created!");
-    console.log("You can now go to http://localhost:5173/auth and sign up using Email & Password.");
+    console.log("You can now go to your app and sign up using Email & Password.");
   }
 }
 
