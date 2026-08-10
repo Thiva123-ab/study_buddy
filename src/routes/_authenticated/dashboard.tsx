@@ -7,6 +7,16 @@ import { useServerFn } from "@tanstack/react-start";
 import { deleteDocument, getSkillStats, toggleFavorite, getUserCreditsInfo } from "@/lib/study.functions";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Check } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -23,6 +33,7 @@ function Dashboard() {
   const [query, setQuery] = useState("");
   const [favsOnly, setFavsOnly] = useState(false);
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const del = useServerFn(deleteDocument);
   const loadStats = useServerFn(getSkillStats);
   const loadCredits = useServerFn(getUserCreditsInfo);
@@ -40,10 +51,11 @@ function Dashboard() {
   }
   useEffect(() => { load(); }, []);
 
-  async function onDelete(id: string) {
-    if (!confirm("Delete this study set?")) return;
-    try { await del({ data: { documentId: id } }); toast.success("Deleted"); load(); router.invalidate(); }
+  async function confirmDelete() {
+    if (!deleteId) return;
+    try { await del({ data: { documentId: deleteId } }); toast.success("Deleted"); load(); router.invalidate(); }
     catch (e: any) { toast.error(e.message); }
+    finally { setDeleteId(null); }
   }
 
   async function onToggleFav(d: Doc, e: React.MouseEvent) {
@@ -273,7 +285,7 @@ function Dashboard() {
                 >
                   <Star className={`h-4 w-4 ${d.is_favorite ? "fill-current" : ""}`} />
                 </button>
-                <button onClick={() => onDelete(d.id)} className="hidden rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive group-hover:block">
+                <button onClick={() => setDeleteId(d.id)} className="hidden rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive group-hover:block">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -289,6 +301,25 @@ function Dashboard() {
           )})}
         </div>
       )}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent className="border-primary/20 bg-card/95 backdrop-blur-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-display">Delete this study set?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your study set and remove your data from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl border-border bg-card/60 hover:bg-card/80 transition-colors">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-[0_0_15px_-3px_rgba(220,38,38,0.4)] transition-all"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
