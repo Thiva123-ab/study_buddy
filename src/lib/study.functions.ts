@@ -534,13 +534,16 @@ export const translateToSinhala = createServerFn({ method: "POST" })
     const { getGateway } = await import("./ai-gateway.server");
     const gateway = getGateway();
 
+    const tasks = [];
+
     // Summary
-    const { data: summary } = await context.supabase
-      .from("summaries").select("*").eq("document_id", data.documentId).maybeSingle();
-    if (summary && !summary.content_si) {
-      const text = await generateAiText({
-        model: gateway(MODEL),
-        prompt: `You are an expert English to Sinhala translator. Translate the following English study summary into clear, natural Sinhala (සිංහල). 
+    tasks.push((async () => {
+      const { data: summary } = await context.supabase
+        .from("summaries").select("*").eq("document_id", data.documentId).maybeSingle();
+      if (summary && !summary.content_si) {
+        const text = await generateAiText({
+          model: gateway(MODEL),
+          prompt: `You are an expert English to Sinhala translator. Translate the following English study summary into clear, natural Sinhala (සිංහල). 
 
 CRITICAL INSTRUCTIONS:
 - You MUST translate the ENTIRE text into Sinhala.
@@ -551,21 +554,23 @@ CRITICAL INSTRUCTIONS:
 
 Text to translate:
 ${summary.content_en}`,
-      });
-      await context.supabase.from("summaries").update({ content_si: text }).eq("id", summary.id);
-    }
+        });
+        await context.supabase.from("summaries").update({ content_si: text }).eq("id", summary.id);
+      }
+    })());
 
     // Flashcards
-    const { data: cards } = await context.supabase
-      .from("flashcards").select("*").eq("document_id", data.documentId).order("position");
-    if (cards && cards.length > 0 && cards.some((c) => !c.front_si)) {
-      const Sch = z.object({
-        cards: z.array(z.object({ front: z.string().catch(""), back: z.string().catch("") })).catch([]),
-      });
-      const text = await generateAiText({
-        model: gateway(MODEL),
-        responseMimeType: "application/json",
-        prompt: `You are an expert English to Sinhala translator. Translate the text inside these flashcards from English to natural Sinhala. 
+    tasks.push((async () => {
+      const { data: cards } = await context.supabase
+        .from("flashcards").select("*").eq("document_id", data.documentId).order("position");
+      if (cards && cards.length > 0 && cards.some((c) => !c.front_si)) {
+        const Sch = z.object({
+          cards: z.array(z.object({ front: z.string().catch(""), back: z.string().catch("") })).catch([]),
+        });
+        const text = await generateAiText({
+          model: gateway(MODEL),
+          responseMimeType: "application/json",
+          prompt: `You are an expert English to Sinhala translator. Translate the text inside these flashcards from English to natural Sinhala. 
 
 CRITICAL INSTRUCTIONS:
 - You MUST translate the content strings into Sinhala.
@@ -578,30 +583,32 @@ Return the same number of cards in order.
 
 JSON to translate:
 ${JSON.stringify({ cards: cards.map((c) => ({ front: c.front_en, back: c.back_en })) })}`,
-      });
-      const translated = parseAiJson(text, Sch).cards;
-      await Promise.all(cards.map((c, i) => {
-        const t = translated[i];
-        if (!t) return Promise.resolve();
-        return context.supabase.from("flashcards").update({ front_si: t.front, back_si: t.back }).eq("id", c.id);
-      }));
-    }
+        });
+        const translated = parseAiJson(text, Sch).cards;
+        await Promise.all(cards.map((c, i) => {
+          const t = translated[i];
+          if (!t) return Promise.resolve();
+          return context.supabase.from("flashcards").update({ front_si: t.front, back_si: t.back }).eq("id", c.id);
+        }));
+      }
+    })());
 
     // Quiz
-    const { data: qs } = await context.supabase
-      .from("quiz_questions").select("*").eq("document_id", data.documentId).order("position");
-    if (qs && qs.length > 0 && qs.some((q) => !q.question_si)) {
-      const Sch = z.object({
-        questions: z.array(z.object({
-          question: z.string().catch(""),
-          options: z.array(z.string().catch("")).catch([]),
-          explanation: z.string().catch(""),
-        })),
-      });
-      const text = await generateAiText({
-        model: gateway(MODEL),
-        responseMimeType: "application/json",
-        prompt: `You are an expert English to Sinhala translator. Translate these quiz questions from English to natural Sinhala. 
+    tasks.push((async () => {
+      const { data: qs } = await context.supabase
+        .from("quiz_questions").select("*").eq("document_id", data.documentId).order("position");
+      if (qs && qs.length > 0 && qs.some((q) => !q.question_si)) {
+        const Sch = z.object({
+          questions: z.array(z.object({
+            question: z.string().catch(""),
+            options: z.array(z.string().catch("")).catch([]),
+            explanation: z.string().catch(""),
+          })),
+        });
+        const text = await generateAiText({
+          model: gateway(MODEL),
+          responseMimeType: "application/json",
+          prompt: `You are an expert English to Sinhala translator. Translate these quiz questions from English to natural Sinhala. 
 
 CRITICAL INSTRUCTIONS:
 - DO NOT translate the JSON keys (e.g., keep "questions", "question", "options", "explanation" in English). 
@@ -614,48 +621,50 @@ Keep the same option order. Return the same number of questions in order.
 
 JSON to translate:
 ${JSON.stringify({ questions: qs.map((q) => ({ question: q.question_en, options: q.options_en, explanation: q.explanation_en })) })}`,
-      });
-      const translated = parseAiJson(text, Sch).questions;
-      await Promise.all(qs.map((q, i) => {
-        const t = translated[i];
-        if (!t) return Promise.resolve();
-        return context.supabase.from("quiz_questions").update({
-          question_si: t.question, options_si: t.options, explanation_si: t.explanation,
-        }).eq("id", q.id);
-      }));
-    }
+        });
+        const translated = parseAiJson(text, Sch).questions;
+        await Promise.all(qs.map((q, i) => {
+          const t = translated[i];
+          if (!t) return Promise.resolve();
+          return context.supabase.from("quiz_questions").update({
+            question_si: t.question, options_si: t.options, explanation_si: t.explanation,
+          }).eq("id", q.id);
+        }));
+      }
+    })());
 
     // Papers
-    const { data: papers } = await context.supabase
-      .from("papers").select("*").eq("document_id", data.documentId);
-    
-    if (papers && papers.length > 0) {
-      for (const p of papers) {
-        if (!p.title_si) {
-          const text = await generateAiText({
-            model: gateway(MODEL),
-            prompt: `You are an expert English to Sinhala translator. Translate the following paper title into natural, simple Sinhala (සරල සිංහල). Return ONLY the translation, nothing else.\n\n${p.title}`,
-          });
-          await context.supabase.from("papers").update({ title_si: text }).eq("id", p.id);
-        }
+    tasks.push((async () => {
+      const { data: papers } = await context.supabase
+        .from("papers").select("*").eq("document_id", data.documentId);
+      
+      if (papers && papers.length > 0) {
+        const paperTasks = papers.map(async (p) => {
+          if (!p.title_si) {
+            const text = await generateAiText({
+              model: gateway(MODEL),
+              prompt: `You are an expert English to Sinhala translator. Translate the following paper title into natural, simple Sinhala (සරල සිංහල). Return ONLY the translation, nothing else.\n\n${p.title}`,
+            });
+            await context.supabase.from("papers").update({ title_si: text }).eq("id", p.id);
+          }
 
-        const { data: pqs } = await context.supabase
-          .from("paper_questions").select("*").eq("paper_id", p.id).order("position");
-        
-        if (pqs && pqs.length > 0 && pqs.some((q) => !q.question_si)) {
-          const Sch = z.object({
-            questions: z.array(z.object({
-              question: z.string().catch(""),
-              options: z.array(z.string().catch("")).nullable().optional().catch([]),
-              modelAnswer: z.string().nullable().optional().catch(""),
-              blanks: z.array(z.string().catch("")).nullable().optional().catch([]),
-            })),
-          });
+          const { data: pqs } = await context.supabase
+            .from("paper_questions").select("*").eq("paper_id", p.id).order("position");
           
-          const text = await generateAiText({
-            model: gateway(MODEL),
-            responseMimeType: "application/json",
-            prompt: `You are an expert English to Sinhala translator. Translate these paper questions from English to natural Sinhala. 
+          if (pqs && pqs.length > 0 && pqs.some((q) => !q.question_si)) {
+            const Sch = z.object({
+              questions: z.array(z.object({
+                question: z.string().catch(""),
+                options: z.array(z.string().catch("")).nullable().optional().catch([]),
+                modelAnswer: z.string().nullable().optional().catch(""),
+                blanks: z.array(z.string().catch("")).nullable().optional().catch([]),
+              })),
+            });
+            
+            const text = await generateAiText({
+              model: gateway(MODEL),
+              responseMimeType: "application/json",
+              prompt: `You are an expert English to Sinhala translator. Translate these paper questions from English to natural Sinhala. 
 
 CRITICAL INSTRUCTIONS:
 - DO NOT translate the JSON keys (e.g., keep "questions", "question", "options", "modelAnswer", "blanks" in English). 
@@ -669,22 +678,26 @@ Keep the same order. Return the same number of questions in order.
 
 JSON to translate:
 ${JSON.stringify({ questions: pqs.map((q) => ({ question: q.question, options: q.options, modelAnswer: q.model_answer, blanks: q.blanks })) })}`,
-          });
-          
-          const translated = parseAiJson(text, Sch).questions;
-          await Promise.all(pqs.map((q, i) => {
-            const t = translated[i];
-            if (!t) return Promise.resolve();
-            return context.supabase.from("paper_questions").update({
-              question_si: t.question,
-              options_si: t.options ?? null,
-              model_answer_si: t.modelAnswer ?? null,
-              blanks_si: t.blanks ?? null,
-            }).eq("id", q.id);
-          }));
-        }
+            });
+            
+            const translated = parseAiJson(text, Sch).questions;
+            await Promise.all(pqs.map((q, i) => {
+              const t = translated[i];
+              if (!t) return Promise.resolve();
+              return context.supabase.from("paper_questions").update({
+                question_si: t.question,
+                options_si: t.options ?? null,
+                model_answer_si: t.modelAnswer ?? null,
+                blanks_si: t.blanks ?? null,
+              }).eq("id", q.id);
+            }));
+          }
+        });
+        await Promise.all(paperTasks);
       }
-    }
+    })());
+
+    await Promise.all(tasks);
 
     return { ok: true };
   });
