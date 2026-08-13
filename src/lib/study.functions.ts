@@ -544,6 +544,7 @@ export const translateToSinhala = createServerFn({ method: "POST" })
 
 CRITICAL INSTRUCTIONS:
 - You MUST translate the ENTIRE text into Sinhala.
+- Use simple, clear, and easy-to-understand everyday Sinhala (සරල සහ පැහැදිලි සිංහල). Avoid overly complex or confusing grammatical words.
 - Do NOT leave any English words unless they are technical terms that cannot be translated.
 - Preserve ALL markdown formatting exactly as it is (e.g. ## Headings, **bold**, - lists).
 - Output ONLY the translated Sinhala text.
@@ -568,6 +569,7 @@ ${summary.content_en}`,
 
 CRITICAL INSTRUCTIONS:
 - You MUST translate the content strings into Sinhala.
+- Use simple, clear, and easy-to-understand everyday Sinhala (සරල සහ පැහැදිලි සිංහල). Avoid confusing terminology.
 - DO NOT translate the JSON keys (e.g., keep "cards", "front", "back" in English). Only translate the content strings.
 - Output ONLY the valid JSON exactly in this shape, with no markdown fences or commentary:
 {"cards":[{"front":"translated front","back":"translated back"}]}
@@ -604,6 +606,7 @@ ${JSON.stringify({ cards: cards.map((c) => ({ front: c.front_en, back: c.back_en
 CRITICAL INSTRUCTIONS:
 - DO NOT translate the JSON keys (e.g., keep "questions", "question", "options", "explanation" in English). 
 - You MUST translate all the content strings (the question text, the options, and the explanation) into Sinhala.
+- Use simple, clear, and easy-to-understand everyday Sinhala (සරල සහ පැහැදිලි සිංහල). Avoid confusing terminology.
 - Return ONLY valid JSON exactly in this shape, with no markdown fences or commentary:
 {"questions":[{"question":"translated question","options":["A","B","C","D"],"explanation":"translated explanation"}]}
 
@@ -631,7 +634,7 @@ ${JSON.stringify({ questions: qs.map((q) => ({ question: q.question_en, options:
         if (!p.title_si) {
           const text = await generateAiText({
             model: gateway(MODEL),
-            prompt: `You are an expert English to Sinhala translator. Translate the following paper title into natural Sinhala (සිංහල). Return ONLY the translation, nothing else.\n\n${p.title}`,
+            prompt: `You are an expert English to Sinhala translator. Translate the following paper title into natural, simple Sinhala (සරල සිංහල). Return ONLY the translation, nothing else.\n\n${p.title}`,
           });
           await context.supabase.from("papers").update({ title_si: text }).eq("id", p.id);
         }
@@ -657,6 +660,7 @@ ${JSON.stringify({ questions: qs.map((q) => ({ question: q.question_en, options:
 CRITICAL INSTRUCTIONS:
 - DO NOT translate the JSON keys (e.g., keep "questions", "question", "options", "modelAnswer", "blanks" in English). 
 - You MUST translate all the content strings inside into Sinhala. 
+- Use simple, clear, and easy-to-understand everyday Sinhala (සරල සහ පැහැදිලි සිංහල). Avoid confusing terminology.
 - If a value is null or missing, keep it null.
 - Return ONLY valid JSON exactly in this shape, with no markdown fences or commentary:
 {"questions":[{"question":"translated question","options":["A","B"],"modelAnswer":"translated answer","blanks":["translated blank"]}]}
@@ -1119,7 +1123,9 @@ export const chatWithDocument = createServerFn({ method: "POST" })
     const { getGateway } = await import("./ai-gateway.server");
     const reply = await generateAiText({
       model: getGateway()(MODEL),
-      system: `You are a helpful study tutor answering questions ONLY about this material titled "${doc.title}". If the answer is not in the material, say so briefly. Be concise, use markdown, and cite the relevant section when possible.\n\nMATERIAL:\n${doc.extracted_text}`,
+      system: `You are a helpful study tutor answering questions ONLY about this material titled "${doc.title}". 
+Provide all answers in simple, clear, and easy-to-understand Sinhala (සරල සහ පැහැදිලි සිංහල) so that it is not confusing for the student, unless the user explicitly asks for English.
+If the answer is not in the material, say so briefly. Be concise, use markdown, and cite the relevant section when possible.\n\nMATERIAL:\n${doc.extracted_text}`,
       messages: recent.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
     });
 
